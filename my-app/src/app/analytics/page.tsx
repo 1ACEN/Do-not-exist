@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Line, Bar, Radar, Doughnut } from "react-chartjs-2";
+import { Line, Bar, Bubble, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -176,10 +176,9 @@ export default function AnalyticsPage() {
       {
         label: "Heart Rate",
         data: filtered.map((d) => d.heartRate),
+        backgroundColor: colorMap.heartRate,
         borderColor: colorMap.heartRate,
-        backgroundColor: colorMap.heartRate + "33",
-        tension: 0.2,
-        fill: false,
+        borderWidth: 1,
       },
     ],
   };
@@ -222,14 +221,14 @@ export default function AnalyticsPage() {
   const dietLabels = Object.keys(dietCounts);
   const dietData = dietLabels.map((l) => dietCounts[l]);
 
-  const moodRadarData = {
-    labels: ["Mood", "Stress"],
+  // bubble points: x = mood, y = stress, r = scaled steps
+  const moodBubbleData = {
     datasets: [
       {
-        label: "Avg",
-        data: [avgMood, avgStress],
-        backgroundColor: "rgba(219, 39, 119, 0.2)",
-        borderColor: "rgba(219, 39, 119, 1)",
+        label: "Mood vs Stress",
+        data: filtered.map((d, idx) => ({ x: d.mood || 0, y: d.stress || 0, r: Math.max(4, Math.round((d.steps || 0) / 1000)) })),
+        backgroundColor: "rgba(219,39,119,0.6)",
+        borderColor: "rgba(219,39,119,1)",
       },
     ],
   };
@@ -246,9 +245,8 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Analytics</h1>
-
-      <div className="flex gap-4 items-end">
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-semibold">Analytics</h1>
         <div>
           <label className="block text-sm text-slate-600">Range</label>
           <select className="mt-1" value={String(rangeDays)} onChange={(e) => setRangeDays(e.target.value === "all" ? "all" : Number(e.target.value))}>
@@ -258,9 +256,6 @@ export default function AnalyticsPage() {
             <option value="all">All</option>
           </select>
         </div>
-
-        {/* all vitals are shown by default (no controls) */}
-        <div />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -285,44 +280,47 @@ export default function AnalyticsPage() {
       <div className="grid md:grid-cols-2 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm text-slate-600 mb-2">Mood vs Stress</h3>
-          <div style={{ height: 180 }}>
-            <Radar data={moodRadarData} options={{ responsive: true, maintainAspectRatio: false }} />
+          <div style={{ height: 260 }}>
+            <Bubble data={moodBubbleData} options={{ responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Mood' } }, y: { title: { display: true, text: 'Stress' } } } }} />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm text-slate-600 mb-2">Diet Distribution</h3>
-          <div style={{ height: 180 }}>
-            <Doughnut data={dietDoughnut} options={{ responsive: true, maintainAspectRatio: false }} />
+          <div style={{ height: 220 }}>
+            <Pie data={dietDoughnut} options={{ responsive: true, maintainAspectRatio: false }} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <section className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm text-slate-600 mb-2">Sleep (last {filtered.length} days)</h3>
-          <div style={{ height: 180 }}>
-            <Line data={sleepDataset} options={commonOptions} />
-          </div>
-        </section>
+      <div className="bg-white rounded-lg shadow p-4">
+        <h2 className="text-lg font-bold mb-3">Vitals</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <section className="p-2">
+            <h3 className="text-sm text-slate-600 mb-2 font-semibold">Sleep (last {filtered.length} days)</h3>
+            <div style={{ height: 220 }}>
+              <Line data={sleepDataset} options={commonOptions} />
+            </div>
+          </section>
 
-        <section className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm text-slate-600 mb-2">Water (last {filtered.length} days)</h3>
-          <div style={{ height: 180 }}>
-            <Line data={waterDataset} options={commonOptions} />
-          </div>
-        </section>
+          <section className="p-2">
+            <h3 className="text-sm text-slate-600 mb-2 font-semibold">Water (last {filtered.length} days)</h3>
+            <div style={{ height: 220 }}>
+              <Line data={waterDataset} options={commonOptions} />
+            </div>
+          </section>
 
-        <section className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm text-slate-600 mb-2">Heart Rate (last {filtered.length} days)</h3>
-          <div style={{ height: 180 }}>
-            <Line data={heartDataset} options={commonOptions} />
-          </div>
-        </section>
+          <section className="p-2">
+            <h3 className="text-sm text-slate-600 mb-2 font-semibold">Heart Rate (last {filtered.length} days)</h3>
+            <div style={{ height: 220 }}>
+              <Bar data={heartDataset} options={commonOptions} />
+            </div>
+          </section>
+        </div>
       </div>
 
       <section className="bg-white rounded-lg shadow p-4">
   <h2 className="text-lg font-medium mb-2">Steps (last {filtered.length} days)</h2>
-        <div style={{ height: 200 }}>
+        <div style={{ height: 260 }}>
           <Bar data={stepsDataset} options={commonOptions} />
         </div>
       </section>
