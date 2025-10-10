@@ -22,12 +22,18 @@ export default function LoginPage() {
         try {
             const payload: any = { role, email, password };
             const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            if (!res.ok) throw new Error("Login failed");
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ error: "Login failed" }));
+                throw new Error(errorData.error || "Login failed");
+            }
+            
             try {
                 // @ts-ignore
                 window.__authRefresh?.();
                 localStorage.setItem("auth-refresh", String(Date.now()));
             } catch {}
+            
             // Redirect users to their dashboard pages.
             if (role === "doctor") {
                 router.replace('/dashboard/doctor');
@@ -54,6 +60,9 @@ export default function LoginPage() {
                     router.replace('/dashboard/user');
                 }
             }
+        } catch (error) {
+            console.error("Login error:", error);
+            alert(error instanceof Error ? error.message : "Login failed. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -61,12 +70,12 @@ export default function LoginPage() {
 
     return (
         <div className="mx-auto max-w-5xl">
-            <div className="mb-4 inline-flex rounded-lg border border-slate-300 bg-white p-1">
-                <button className={`px-4 py-1.5 text-sm rounded-md ${role === "client" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`} onClick={() => setRole("client")} type="button">Client</button>
-                <button className={`px-4 py-1.5 text-sm rounded-md ${role === "doctor" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`} onClick={() => setRole("doctor")} type="button">Doctor</button>
+            <div className="mb-6 inline-flex rounded-lg border border-[var(--card-border)] bg-[var(--surface)] p-1">
+                <button className={`px-4 py-2 text-sm rounded-md transition-all duration-200 ${role === "client" ? "bg-[var(--accent)] text-white shadow-md" : "text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]"}`} onClick={() => setRole("client")} type="button">Client</button>
+                <button className={`px-4 py-2 text-sm rounded-md transition-all duration-200 ${role === "doctor" ? "bg-[var(--accent)] text-white shadow-md" : "text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]"}`} onClick={() => setRole("doctor")} type="button">Doctor</button>
             </div>
 
-            <Card className="overflow-hidden border-slate-300">
+            <Card className="overflow-hidden border-[var(--card-border)] shadow-lg">
                 <div className="grid md:grid-cols-2 min-h-[460px]">
                     <AnimatePresence mode="wait" initial={false}>
                         {role === "client" ? (
@@ -99,8 +108,8 @@ export default function LoginPage() {
 
 function RegisterHint({ role }: { role: "client" | "doctor" }) {
     return (
-        <div className="text-sm text-slate-600">
-            New here? <a className="text-sky-700 hover:underline" href={`/register?role=${role}`}>Create an account</a>
+        <div className="text-sm text-[var(--foreground-muted)]">
+            New here? <a className="text-[var(--accent)] hover:underline font-medium" href={`/register?role=${role}`}>Create an account</a>
         </div>
     );
 }
@@ -108,23 +117,23 @@ function RegisterHint({ role }: { role: "client" | "doctor" }) {
 function InfoPanel({ type }: { type: "client" | "doctor" }) {
     return (
         <div className="relative h-full overflow-hidden p-10">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-red-50 via-white to-slate-100" />
-            <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-red-100/70 blur-2xl" />
-            <div className="pointer-events-none absolute -left-16 bottom-10 h-48 w-48 rounded-full bg-sky-100/60 blur-2xl" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--red-50)] via-[var(--background)] to-[var(--red-100)]" />
+            <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[var(--red-200)]/70 blur-2xl" />
+            <div className="pointer-events-none absolute -left-16 bottom-10 h-48 w-48 rounded-full bg-[var(--red-100)]/60 blur-2xl" />
             <div className="relative z-10 flex h-full flex-col justify-center">
-                <h2 className="text-3xl font-extrabold bg-gradient-to-r from-[var(--accent)] to-slate-900 bg-clip-text text-transparent">{type === "client" ? "Welcome back, Client" : "Welcome back, Doctor"}</h2>
-                <p className="mt-3 text-slate-700">{type === "client" ? "Continue your journey to healthier habits with AI-powered insights." : "Review patient signals and continue care with clarity."}</p>
-                <div className="mt-6 grid grid-cols-1 gap-3 text-sm text-slate-700">
+                <h2 className="text-3xl font-extrabold gradient-text">{type === "client" ? "Welcome back, Client" : "Welcome back, Doctor"}</h2>
+                <p className="mt-3 text-[var(--foreground-muted)]">{type === "client" ? "Continue your journey to healthier habits with AI-powered insights." : "Review patient signals and continue care with clarity."}</p>
+                <div className="mt-6 grid grid-cols-1 gap-3 text-sm text-[var(--foreground-muted)]">
                     {type === "client" ? (
                         <>
-                            <BadgeLine icon={<Activity className="h-4 w-4 text-sky-600" />} text="Track streaks and goals" />
+                            <BadgeLine icon={<Activity className="h-4 w-4 text-[var(--accent)]" />} text="Track streaks and goals" />
                             <BadgeLine icon={<HeartPulse className="h-4 w-4 text-[var(--accent)]" />} text="Get risk alerts early" />
-                            <BadgeLine icon={<Stethoscope className="h-4 w-4 text-slate-900" />} text="Share with your doctor" />
+                            <BadgeLine icon={<Stethoscope className="h-4 w-4 text-[var(--accent)]" />} text="Share with your doctor" />
                         </>
                     ) : (
                         <>
-                            <BadgeLine icon={<Stethoscope className="h-4 w-4 text-slate-900" />} text="Patient overview" />
-                            <BadgeLine icon={<Activity className="h-4 w-4 text-sky-600" />} text="Deviation alerts" />
+                            <BadgeLine icon={<Stethoscope className="h-4 w-4 text-[var(--accent)]" />} text="Patient overview" />
+                            <BadgeLine icon={<Activity className="h-4 w-4 text-[var(--accent)]" />} text="Deviation alerts" />
                             <BadgeLine icon={<HeartPulse className="h-4 w-4 text-[var(--accent)]" />} text="AI confidence scores" />
                         </>
                     )}
@@ -136,9 +145,9 @@ function InfoPanel({ type }: { type: "client" | "doctor" }) {
 
 function BadgeLine({ icon, text }: { icon: ReactNode; text: string }) {
     return (
-        <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white/70 px-3 py-2">
-            <span className="grid place-items-center rounded-sm bg-white p-1 shadow-sm">{icon}</span>
-            <span>{text}</span>
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--card-border)] bg-[var(--surface)]/70 px-4 py-3 hover:bg-[var(--accent-bg)] transition-colors duration-200">
+            <span className="grid place-items-center rounded-lg bg-[var(--accent-bg)] p-2 shadow-sm">{icon}</span>
+            <span className="font-medium">{text}</span>
         </div>
     );
 }
@@ -146,24 +155,24 @@ function BadgeLine({ icon, text }: { icon: ReactNode; text: string }) {
 function LoginForm({ roleLabel, onSubmit, email, setEmail, password, setPassword, loading }: { roleLabel: "Client" | "Doctor"; onSubmit: (e: React.FormEvent) => void; email: string; setEmail: (v: string) => void; password: string; setPassword: (v: string) => void; loading: boolean; }) {
     return (
         <div>
-            <CardHeader className="border-b border-slate-100">
+            <CardHeader className="border-b border-[var(--card-border)]">
                 <CardTitle className="flex items-center justify-between">
-                    <span>Login</span>
-                    <span className="rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white tracking-wide">{roleLabel}</span>
+                    <span className="text-xl font-semibold">Login</span>
+                    <span className="rounded-lg bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white tracking-wide">{roleLabel}</span>
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-                <form className="grid gap-4" onSubmit={onSubmit}>
+                <form className="grid gap-6" onSubmit={onSubmit}>
                     <div className="grid gap-2">
-                        <Label htmlFor={`email-${roleLabel}`}>Email</Label>
-                        <Input id={`email-${roleLabel}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" suppressHydrationWarning />
+                        <Label htmlFor={`email-${roleLabel}`} className="text-[var(--foreground)] font-medium">Email</Label>
+                        <Input id={`email-${roleLabel}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" suppressHydrationWarning className="border-[var(--card-border)] focus:border-[var(--accent)]" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor={`password-${roleLabel}`}>Password</Label>
-                        <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        <Label htmlFor={`password-${roleLabel}`} className="text-[var(--foreground)] font-medium">Password</Label>
+                        <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="border-[var(--card-border)] focus:border-[var(--accent)]" />
                     </div>
-                    <Button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
-                    <p className="text-xs text-slate-500">You are signing in as <span className="font-medium">{roleLabel}</span>.</p>
+                    <Button type="submit" disabled={loading} className="w-full">{loading ? "Signing in..." : "Sign in"}</Button>
+                    <p className="text-xs text-[var(--foreground-muted)]">You are signing in as <span className="font-medium text-[var(--accent)]">{roleLabel}</span>.</p>
                     <RegisterHint role={roleLabel === "Client" ? "client" : "doctor"} />
                 </form>
             </CardContent>

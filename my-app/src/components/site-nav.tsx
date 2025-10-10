@@ -1,41 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/useAuth";
 
 export function SiteNav() {
-    const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        let mounted = true;
-        const refresh = async () => {
-            try {
-                const res = await fetch("/api/me", { cache: "no-store" });
-                const data = await res.json();
-                if (mounted) setUser(data.user);
-            } catch {
-                if (mounted) setUser(null);
-            }
-        };
-        refresh();
-        const onStorage = (e: StorageEvent) => {
-            if (e.key === "auth-refresh") refresh();
-        };
-        window.addEventListener("storage", onStorage);
-        // @ts-ignore optional manual trigger
-        window.__authRefreshSiteNav = refresh;
-        return () => {
-            mounted = false;
-            window.removeEventListener("storage", onStorage);
-        };
-    }, []);
-
-    if (!user) return null;
-
-    // Role-based navigation
+    const { user, loading } = useAuth();
     const pathname = usePathname() ?? "/";
+
+    // Don't show navigation until we know the user state
+    if (loading || !user) return null;
 
     if (user.role === "doctor") {
         const items = [
@@ -54,10 +29,10 @@ export function SiteNav() {
                             href={it.href}
                             aria-current={active ? "page" : undefined}
                             className={cn(
-                                "px-3 py-2 rounded-md transition-all duration-150 text-[var(--muted)]",
+                                "px-4 py-2 rounded-lg transition-all duration-200 text-[var(--foreground-muted)] font-medium",
                                 active
-                                    ? "text-[var(--foreground)] font-semibold text-lg border-b-2 border-[var(--accent)]"
-                                    : "hover:text-[var(--accent)] hover:font-medium"
+                                    ? "text-[var(--accent)] font-semibold bg-[var(--accent-bg)] border-b-2 border-[var(--accent)]"
+                                    : "hover:text-[var(--accent)] hover:bg-[var(--accent-bg)] hover:font-semibold"
                             )}
                         >
                             {it.label}
@@ -86,10 +61,10 @@ export function SiteNav() {
                         href={it.href}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                            "px-3 py-2 rounded-md transition-all duration-150 text-[var(--muted)]",
+                            "px-4 py-2 rounded-lg transition-all duration-200 text-[var(--foreground-muted)] font-medium",
                             active
-                                ? "text-[var(--foreground)] font-semibold text-lg border-b-2 border-[var(--accent)]"
-                                : "hover:text-[var(--accent)] hover:font-medium"
+                                ? "text-[var(--accent)] font-semibold bg-[var(--accent-bg)] border-b-2 border-[var(--accent)]"
+                                : "hover:text-[var(--accent)] hover:bg-[var(--accent-bg)] hover:font-semibold"
                         )}
                     >
                         {it.label}

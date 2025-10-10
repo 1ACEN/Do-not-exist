@@ -20,20 +20,22 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="en">
       <body className={cn(inter.variable, "antialiased bg-[var(--background)] text-[var(--foreground)]")}> 
-        <header className="sticky top-0 z-30 w-full border-b border-[var(--card-border)] bg-[var(--surface)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/75 shadow-sm">
+        <header className="sticky top-0 z-30 w-full border-b border-[var(--card-border)] bg-[var(--background)]/95 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--background)]/90 shadow-sm">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 font-semibold text-[var(--foreground)]">
-              <div className="rounded-full bg-[var(--accent)]/10 p-2">
-                <Stethoscope className="h-6 w-6 text-[var(--accent)]" />
+            <Link href="/" className="flex items-center gap-3 font-semibold text-[var(--foreground)] group">
+              <div className="rounded-lg bg-[var(--accent)] p-2 group-hover:bg-[var(--accent-hover)] transition-colors duration-200">
+                <Stethoscope className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg">Healthcare Eclipse</span>
+              <span className="text-lg gradient-text professional-heading">Healthcare Eclipse</span>
             </Link>
             <SiteNav />
             <div className="flex items-center gap-3">
-              <button aria-label="Notifications" className="p-2 rounded-full hover:bg-slate-100">
-                <Bell className="h-5 w-5" />
+              <button aria-label="Notifications" className="p-2 rounded-md hover:bg-[var(--accent-bg)] transition-colors duration-200">
+                <Bell className="h-4 w-4 text-[var(--foreground-muted)] hover:text-[var(--accent)]" />
               </button>
-              <UserNav />
+              <div className="min-w-[80px]">
+                <UserNav />
+              </div>
             </div>
           </div>
         </header>
@@ -42,26 +44,23 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             {children}
           </main>
         </Providers>
-        <footer className="mt-10 border-t border-[var(--card-border)] bg-gradient-to-t from-[var(--surface)] to-transparent">
+        <footer className="mt-16 border-t border-gray-200 bg-gray-100">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-8 md:grid-cols-3 text-sm">
             <div>
-              <div className="font-semibold text-[var(--foreground)]">Healthcare Eclipse</div>
-              <p className="mt-2 text-[var(--muted)]">Detect silent diseases early with trustworthy AI insights.</p>
+              <div className="font-semibold text-gray-900 gradient-text text-lg professional-heading">Healthcare Eclipse</div>
+              <p className="mt-3 text-gray-700 leading-relaxed professional-text">Detect silent diseases early with trustworthy AI insights and advanced health monitoring.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-[var(--muted)]">
-              <Link href="/client" className="hover:text-[var(--foreground)]">Client App</Link>
-              <Link href="/analyst" className="hover:text-[var(--foreground)]">Analyst</Link>
-              <Link href="/detective" className="hover:text-[var(--foreground)]">AI Insights</Link>
-              <Link href="/admin" className="hover:text-[var(--foreground)]">Analytics</Link>
-              <Link href="/login" className="hover:text-[var(--foreground)]">Login</Link>
-              <Link href="/register" className="hover:text-[var(--foreground)]">Register</Link>
+            <div className="grid grid-cols-2 gap-3 text-gray-700">
+              <Link href="/client" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Client App</Link>
+              <Link href="/analyst" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Analyst</Link>
+              <Link href="/detective" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">AI Insights</Link>
+              <Link href="/admin" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Analytics</Link>
+              <Link href="/login" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Login</Link>
+              <Link href="/register" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Register</Link>
             </div>
-            <div className="md:text-right text-[var(--muted)]">© 2025 Healthcare Eclipse • All rights reserved</div>
-          </div>
-          <div className="border-t border-[var(--card-border)]">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-[var(--muted)]">
-              <span>Built with Next.js • TypeScript • Tailwind</span>
-              <span className="text-[var(--accent)]">Healthy minds, healthy code.</span>
+            <div className="md:text-right text-gray-700">
+              <div className="font-medium text-gray-900 mb-2 professional-heading">© 2025 Healthcare Eclipse</div>
+              <div className="professional-text">All rights reserved</div>
             </div>
           </div>
         </footer>

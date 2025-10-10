@@ -6,25 +6,27 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:pointer-events-none disabled:opacity-50 btn-animate",
     {
         variants: {
             variant: {
                 default:
-                    "bg-[var(--accent)] text-white hover:bg-[var(--accent-600)] shadow-md",
+                    "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-sm hover:shadow-md",
                 secondary:
-                    "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--card-border)] hover:bg-[var(--accent-100)]",
+                    "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--card-border)] hover:bg-[var(--accent-bg)] hover:border-[var(--card-border-hover)]",
                 outline:
-                    "border border-[var(--card-border)] bg-transparent hover:bg-[var(--accent-100)]",
-                ghost: "hover:bg-[var(--accent-100)]",
+                    "border border-[var(--accent)] bg-transparent text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white",
+                ghost: "hover:bg-[var(--accent-bg)] text-[var(--foreground)] hover:text-[var(--accent)]",
                 destructive:
-                    "bg-[#b02a2a] text-white hover:bg-[#8b1f1f]",
+                    "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-sm",
+                gradient:
+                    "bg-gradient-to-r from-[var(--accent)] to-[var(--accent-light)] text-white hover:from-[var(--accent-hover)] hover:to-[var(--accent-dark)] shadow-sm",
             },
             size: {
-                default: "h-10 px-4 py-2",
-                sm: "h-9 rounded-md px-3",
-                lg: "h-11 rounded-md px-8",
-                icon: "h-10 w-10",
+                default: "h-9 px-4 py-2",
+                sm: "h-8 rounded-md px-3 text-xs",
+                lg: "h-11 rounded-md px-6 text-base",
+                icon: "h-9 w-9",
             },
         },
         defaultVariants: {

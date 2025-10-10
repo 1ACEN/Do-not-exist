@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -151,7 +152,9 @@ export default function DoctorDashboard() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
+  const pathname = usePathname();
   const [patientLogs, setPatientLogs] = useState<PatientLog[]>(mockPatientLogs);
+  const [patientPrescriptions, setPatientPrescriptions] = useState<Array<{ id: string; medication: string; dosage?: string; frequency?: string; duration?: string; prescribedDate: string; notes?: string; isCompleted?: boolean; isActive?: boolean; }>>([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const router = useRouter();
@@ -200,6 +203,23 @@ export default function DoctorDashboard() {
     const id = setInterval(tick, 8000);
     return () => { mounted = false; clearInterval(id); };
   }, [router]);
+
+  // Fetch prescriptions when a patient is selected
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!selectedPatient) return setPatientPrescriptions([]);
+      try {
+        const res = await fetch(`/api/prescriptions?userId=${selectedPatient.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        setPatientPrescriptions(data.items || []);
+      } catch (e) { /* ignore */ }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [selectedPatient]);
 
   // send prescription to a user
   const sendPrescription = async (userId: string, payload: { medication: string; dosage?: string; frequency?: string; duration?: string; notes?: string }) => {
@@ -354,6 +374,19 @@ export default function DoctorDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Doctor dashboard sub-navigation */}
+      <nav aria-label="Doctor dashboard navigation" className="flex items-center gap-3">
+        <Link href="/dashboard/doctor" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/dashboard/doctor') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'}`}>
+          Dashboard
+        </Link>
+        <Link href={selectedPatient ? `/dashboard/doctor/patient/${selectedPatient.id}` : '#'} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/dashboard/doctor/patient') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'} ${!selectedPatient ? 'opacity-50 pointer-events-none' : ''}`}>
+          Patient Details
+        </Link>
+        <Link href="/admin" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/admin') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'}`}>
+          Analytics
+        </Link>
+      </nav>
 
       {/* Overview Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -595,6 +628,50 @@ export default function DoctorDashboard() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* Prescriptions for this patient */}
+                  {patientPrescriptions.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Prescriptions</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {patientPrescriptions.map(p => (
+                            <div key={p.id} className={`p-3 rounded-lg border ${p.isCompleted ? 'bg-gray-100 border-gray-200 text-gray-600 line-through' : 'bg-green-50 border-green-200 text-green-900'}`}>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="font-medium">{p.medication}</div>
+                                  <div className="text-sm">{p.dosage} • {p.frequency} • {p.duration}</div>
+                                  {p.notes && <div className="text-xs italic">{p.notes}</div>}
+                                </div>
+                                <div>
+                                  <label className="inline-flex items-center gap-2 text-sm">
+                                    <input type="checkbox" checked={Boolean(p.isCompleted)} onChange={async (e) => {
+                                      const checked = e.target.checked;
+                                      setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: checked } : x));
+                                      try {
+                                        const res = await fetch('/api/prescriptions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, isCompleted: checked }) });
+                                        if (!res.ok) {
+                                          setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: !checked } : x));
+                                          alert('Failed to update prescription');
+                                        }
+                                      } catch (err) {
+                                        setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: !checked } : x));
+                                        console.error(err);
+                                        alert('Failed to update prescription');
+                                      }
+                                    }} />
+                                    <span className="text-xs">Completed</span>
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Weekly Activity */}
                   <Card>

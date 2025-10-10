@@ -90,6 +90,8 @@ type Prescription = {
   duration: string;
   prescribedDate: string;
   notes?: string;
+  isCompleted?: boolean;
+  isActive?: boolean;
 };
 
 type DoctorNote = {
@@ -873,17 +875,40 @@ export default function UserDashboard() {
                       </h4>
                       <div className="space-y-3">
                         {prescriptions.map((prescription) => (
-                          <div key={prescription.id} className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm shadow-sm">
-                            <div className="font-medium text-green-900 mb-1">{prescription.medication}</div>
-                            <div className="text-green-700 mb-2">
-                              {prescription.dosage} - {prescription.frequency} for {prescription.duration}
+                          <div key={prescription.id} className={`p-3 border rounded-lg text-sm shadow-sm ${prescription.isCompleted ? 'bg-gray-100 border-gray-200 line-through text-gray-500' : 'bg-green-50 border-green-200 text-green-900'}`}>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="font-medium mb-1">{prescription.medication}</div>
+                                <div className="text-sm mb-1">{prescription.dosage} - {prescription.frequency} for {prescription.duration}</div>
+                                <div className="text-xs">Prescribed: {new Date(prescription.prescribedDate).toLocaleDateString()}</div>
+                                {prescription.notes && (
+                                  <div className="text-xs italic">{prescription.notes}</div>
+                                )}
+                              </div>
+                              <div className="ml-4 flex flex-col items-end">
+                                <label className="inline-flex items-center gap-2 text-sm">
+                                  <input type="checkbox" checked={Boolean(prescription.isCompleted)} onChange={async (e) => {
+                                    const checked = e.target.checked;
+                                    // optimistic update
+                                    setPrescriptions(prev => prev.map(p => p.id === prescription.id ? { ...p, isCompleted: checked } : p));
+                                    try {
+                                      const res = await fetch('/api/prescriptions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: prescription.id, isCompleted: checked }) });
+                                      if (!res.ok) {
+                                        // rollback
+                                        setPrescriptions(prev => prev.map(p => p.id === prescription.id ? { ...p, isCompleted: !checked } : p));
+                                        console.error('Failed to update prescription');
+                                        alert('Failed to update prescription status');
+                                      }
+                                    } catch (err) {
+                                      setPrescriptions(prev => prev.map(p => p.id === prescription.id ? { ...p, isCompleted: !checked } : p));
+                                      console.error(err);
+                                      alert('Failed to update prescription status');
+                                    }
+                                  }} />
+                                  <span className="text-xs">Mark as completed</span>
+                                </label>
+                              </div>
                             </div>
-                            <div className="text-xs text-green-600 mb-1">
-                              Prescribed: {new Date(prescription.prescribedDate).toLocaleDateString()}
-                            </div>
-                            {prescription.notes && (
-                              <div className="text-xs text-green-600 italic">{prescription.notes}</div>
-                            )}
                           </div>
                         ))}
                       </div>
