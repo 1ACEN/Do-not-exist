@@ -1,9 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f4f6; /* slate-100 */
-  --foreground: #111111;
-  --accent: #b91c1c; /* royal red */
+  /* Darker Royal Red theme */
+  --background: #f6ebe9; /* slightly deeper warm paper */
+  --surface: #fff2f2; /* slightly warm card surface */
+  --foreground: #0f172a; /* dark navy for contrast */
+  --muted: #6b6b72; /* muted text (warmer) */
+  --accent: #7b0f0f; /* richer/darker royal red primary */
+  --accent-600: #5c0a0a; /* deeper accent for hovers */
+  --accent-100: #fde6e6; /* faint warm accent bg */
+  --card-border: rgba(123,15,15,0.12);
 }
 
 @theme inline {
@@ -15,13 +21,17 @@
 
 body {
   background-color: var(--background);
-  /* Gradient + subtle grid */
+  /* deeper warm paper texture + stronger accent gradient */
   background-image:
-    linear-gradient(135deg, rgba(185, 28, 28, 0.05) 0%, rgba(0, 0, 0, 0.04) 100%),
-    linear-gradient(to right, rgba(0,0,0,0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.035) 1px, transparent 1px);
-  background-size: auto, 22px 22px, 22px 22px;
-  background-position: 0 0, 0 0, 0 0;
+    radial-gradient(circle at 10% 10%, rgba(123,15,15,0.04), transparent 12%),
+    linear-gradient(180deg, rgba(123,15,15,0.03), transparent 35%),
+    linear-gradient(to right, rgba(0,0,0,0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.02) 1px, transparent 1px);
+  background-size: auto, auto, 20px 20px, 20px 20px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
   color: var(--foreground);
   font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
 }
+
+/* Utility helper for accented outlines used across components */
+.accent-outline { box-shadow: 0 0 0 6px rgba(123,15,15,0.09); }

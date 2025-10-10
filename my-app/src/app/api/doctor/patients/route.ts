@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
 
     const db = await getDb();
     const users = db.collection("users");
-    const patients = await users.find({ doctorId: payload.sub }, { projection: { passwordHash: 0 } }).toArray();
+  // support multiple assignments: users may have doctorIds array
+  const patients = await users.find({ $or: [ { doctorId: payload.sub }, { doctorIds: payload.sub } ] }, { projection: { passwordHash: 0 } }).toArray();
     const items = patients.map(p => ({ id: p._id.toString(), name: p.name, email: p.email, age: p.age, assignedDate: p.doctorAssignedDate }));
     return NextResponse.json({ items });
   } catch (e) {

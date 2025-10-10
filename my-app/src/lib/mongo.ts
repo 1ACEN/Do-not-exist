@@ -16,11 +16,28 @@ function getUri() {
 export function getMongoClient(): Promise<MongoClient> {
     if (clientPromise) return clientPromise;
     const uri = getUri();
-    client = new MongoClient(uri, {
+    // Allow a developer opt-in to relax TLS verification in local/dev environments
+    // by setting MONGODB_ALLOW_INVALID_CERT=true in .env.local (NOT for production).
+    const allowInvalidCert = process.env.MONGODB_ALLOW_INVALID_CERT === "true";
+    const enableTls = process.env.MONGODB_TLS === "true" || uri.startsWith("mongodb+srv://");
+
+    const opts: any = {
         serverSelectionTimeoutMS: 5000,
         appName: "healthcare-eclipse",
+    };
+    if (enableTls) {
+        opts.tls = true;
+        if (allowInvalidCert) opts.tlsAllowInvalidCertificates = true;
+    }
+
+    client = new MongoClient(uri, opts);
+    clientPromise = client.connect().catch((err) => {
+        console.error("Failed to connect to MongoDB:", err);
+        // reset so future attempts can retry
+        client = null;
+        clientPromise = null;
+        throw err;
     });
-    clientPromise = client.connect();
     return clientPromise;
 }
 

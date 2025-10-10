@@ -30,6 +30,7 @@ import {
   Shield,
   Loader2
 } from "lucide-react";
+import Modal from '@/components/ui/modal';
 import { 
   ResponsiveContainer, 
   LineChart as RechartsLineChart, 
@@ -216,6 +217,35 @@ export default function DoctorDashboard() {
       if (!res.ok) throw new Error('Failed');
       alert('Notice sent');
     } catch (e) { console.error(e); alert('Failed to send notice'); }
+  };
+
+  // Modal state for prescription and notice
+  const [prescriptionOpen, setPrescriptionOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [prescriptionForm, setPrescriptionForm] = useState({ medication: '', dosage: '', frequency: '', duration: '', notes: '' });
+  const [noticeForm, setNoticeForm] = useState({ title: '', message: '' });
+
+  const openPrescriptionFor = (patientId: string) => {
+    setSelectedPatient(patients.find(p => p.id === patientId) || null);
+    setPrescriptionForm({ medication: '', dosage: '', frequency: '', duration: '', notes: '' });
+    setPrescriptionOpen(true);
+  };
+
+  const submitPrescription = async () => {
+    if (!selectedPatient) return;
+    await sendPrescription(selectedPatient.id, { medication: prescriptionForm.medication, dosage: prescriptionForm.dosage, frequency: prescriptionForm.frequency, duration: prescriptionForm.duration, notes: prescriptionForm.notes });
+    setPrescriptionOpen(false);
+  };
+
+  const openNotice = () => {
+    setNoticeForm({ title: '', message: '' });
+    setNoticeOpen(true);
+  };
+
+  const submitNotice = async () => {
+    if (!noticeForm.message) return;
+    await sendNotice(noticeForm.title || 'Important', noticeForm.message);
+    setNoticeOpen(false);
   };
 
   // Show loading state
@@ -477,26 +507,18 @@ export default function DoctorDashboard() {
                         Last visit: {new Date(selectedPatient.lastVisit).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" onClick={() => {
-                        const med = prompt('Medication name');
-                        if (!med) return;
-                        const dose = prompt('Dosage (e.g. 500mg)') || '';
-                        const freq = prompt('Frequency (e.g. Twice daily)') || '';
-                        const dur = prompt('Duration (e.g. 30 days)') || '';
-                        sendPrescription(selectedPatient!.id, { medication: med, dosage: dose, frequency: freq, duration: dur });
-                      }}>
+                      <div className="flex items-center gap-2">
+                      <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" onClick={() => { openPrescriptionFor(selectedPatient!.id); }}>
                         <MessageSquare className="h-4 w-4" />
                         Send Prescription
                       </button>
-                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => {
-                        const title = prompt('Notice title') || 'Important';
-                        const msg = prompt('Message') || '';
-                        if (!msg) return;
-                        sendNotice(title, msg);
-                      }}>
+                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => { openNotice(); }}>
                         <FileText className="h-4 w-4" />
                         Send Notice
+                      </button>
+                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => router.push(`/dashboard/doctor/patient/${selectedPatient.id}`)}>
+                        <BarChart3 className="h-4 w-4" />
+                        View Charts
                       </button>
                       <Button size="sm" variant={"ghost" as any} onClick={exportReport}>
                         <Download className="h-4 w-4 mr-2" />
@@ -736,6 +758,57 @@ export default function DoctorDashboard() {
           )}
         </div>
       </div>
+      {/* Prescription Modal */}
+      <Modal open={prescriptionOpen} onClose={() => setPrescriptionOpen(false)} title={`Send Prescription to ${selectedPatient?.name || ''}`} footer={(
+        <div className="flex justify-end gap-2">
+          <button className="px-3 py-1.5 rounded border" onClick={() => setPrescriptionOpen(false)}>Cancel</button>
+          <button className="px-3 py-1.5 rounded bg-blue-600 text-white" onClick={submitPrescription}>Send</button>
+        </div>
+      )}>
+        <div className="space-y-3">
+          <div>
+            <Label>Medication</Label>
+            <Input value={prescriptionForm.medication} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, medication: e.target.value })} placeholder="Medication name" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Dosage</Label>
+              <Input value={prescriptionForm.dosage} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, dosage: e.target.value })} placeholder="e.g. 500mg" />
+            </div>
+            <div>
+              <Label>Frequency</Label>
+              <Input value={prescriptionForm.frequency} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, frequency: e.target.value })} placeholder="e.g. Twice daily" />
+            </div>
+          </div>
+          <div>
+            <Label>Duration</Label>
+            <Input value={prescriptionForm.duration} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, duration: e.target.value })} placeholder="e.g. 30 days" />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Input value={prescriptionForm.notes} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, notes: e.target.value })} placeholder="Additional notes (optional)" />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Notice Modal */}
+      <Modal open={noticeOpen} onClose={() => setNoticeOpen(false)} title={"Send Notice to All Assigned Patients"} footer={(
+        <div className="flex justify-end gap-2">
+          <button className="px-3 py-1.5 rounded border" onClick={() => setNoticeOpen(false)}>Cancel</button>
+          <button className="px-3 py-1.5 rounded bg-blue-600 text-white" onClick={submitNotice}>Send</button>
+        </div>
+      )}>
+        <div className="space-y-3">
+          <div>
+            <Label>Title</Label>
+            <Input value={noticeForm.title} onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })} placeholder="Notice title" />
+          </div>
+          <div>
+            <Label>Message</Label>
+            <Input value={noticeForm.message} onChange={(e) => setNoticeForm({ ...noticeForm, message: e.target.value })} placeholder="Message" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

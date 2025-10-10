@@ -48,7 +48,21 @@ export default function ProfilePage() {
                         </div>
                     )}
                     {user.role === "doctor" && (
-                        <div><span className="font-medium">Doctor ID:</span> {user.doctorId}</div>
+                        <div><span className="font-medium">Doctor ID:</span> {user._id || user.id || ''}</div>
+                    )}
+                    {user.role === "client" && (
+                        <div>
+                            <span className="font-medium">Assigned Doctors:</span>
+                            <div className="mt-1 text-sm text-slate-600">
+                                {(user.doctorIds && user.doctorIds.length > 0) ? (
+                                    <ul className="list-disc pl-5">
+                                        {user.doctorIds.map((d: string) => <li key={d}>{d}</li>)}
+                                    </ul>
+                                ) : (
+                                    <div>None</div>
+                                )}
+                            </div>
+                        </div>
                     )}
                     <div className="pt-4">
                         <Button onClick={logout}>Logout</Button>

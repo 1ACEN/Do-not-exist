@@ -45,23 +45,23 @@ export function UserNav() {
     if (user) {
         return (
             <div className="relative" ref={menuRef}>
-                <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+                <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-2 rounded-full border border-[var(--card-border)] bg-[var(--surface)] px-3 py-1.5 text-sm hover:accent-outline">
                     <span className="font-medium">{user.name ?? "Account"}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>
                 {open && (
-                    <div className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow">
-                        <Link href="/profile" className="block px-3 py-2 text-sm hover:bg-slate-50">Profile</Link>
+                    <div className="absolute right-0 mt-2 w-48 rounded-md border border-[var(--card-border)] bg-[var(--surface)] shadow">
+                        <Link href="/profile" className="block px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Profile</Link>
                         {/* Show Analytics link for authorized roles */}
                         {user && (user.role === "doctor" || user.role === "analyst" || user.role === "admin") && (
-                            <Link href="/admin" className="block px-3 py-2 text-sm hover:bg-slate-50">Analytics</Link>
+                            <Link href="/admin" className="block px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Analytics</Link>
                         )}
-                        {/* Allow regular users to assign a doctor */}
-                        {user && (!user.role || user.role === "user") && (
-                            <Link href="/doctors" className="block px-3 py-2 text-sm hover:bg-slate-50">Assign Doctor</Link>
+                        {/* Allow regular clients to assign a doctor */}
+                        {user && (user.role === "client" || !user.role) && (
+                            <Link href="/doctors" className="block px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Assign Doctor</Link>
                         )}
                         <button onClick={async () => { await fetch("/api/me", { method: "POST" }); try { // @ts-ignore
-                            window.__authRefresh?.(); localStorage.setItem("auth-refresh", String(Date.now())); } catch {} window.location.href = "/"; }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Log out</button>
+                            window.__authRefresh?.(); localStorage.setItem("auth-refresh", String(Date.now())); } catch {} window.location.href = "/"; }} className="block w-full text-left px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Log out</button>
                     </div>
                 )}
             </div>
@@ -69,7 +69,7 @@ export function UserNav() {
     }
 
     return (
-        <Link href="/login" className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+        <Link href="/login" className="inline-flex items-center gap-2 rounded-full border border-[var(--card-border)] bg-[var(--surface)] px-3 py-1.5 text-sm hover:accent-outline">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Login
         </Link>

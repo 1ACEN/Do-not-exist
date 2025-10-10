@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export function SiteNav() {
     const [user, setUser] = useState<any>(null);
@@ -33,24 +35,67 @@ export function SiteNav() {
     if (!user) return null;
 
     // Role-based navigation
+    const pathname = usePathname() ?? "/";
+
     if (user.role === "doctor") {
+        const items = [
+            { href: "/dashboard/doctor", label: "Dashboard" },
+            { href: "/analyst", label: "Analyst" },
+            { href: "/admin", label: "Analytics" },
+            { href: "/doctors", label: "Doctors" },
+        ];
         return (
-            <nav className="hidden md:flex items-center gap-6 text-sm">
-                <Link href="/dashboard/doctor" className="hover:text-sky-700">Dashboard</Link>
-                <Link href="/analyst" className="hover:text-sky-700">Analyst</Link>
-                <Link href="/admin" className="hover:text-sky-700">Analytics</Link>
-                <Link href="/doctors" className="hover:text-sky-700">Doctors</Link>
+            <nav className="hidden md:flex items-center gap-4">
+                {items.map((it) => {
+                    const active = pathname.startsWith(it.href);
+                    return (
+                        <Link
+                            key={it.href}
+                            href={it.href}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                                "px-3 py-2 rounded-md transition-all duration-150 text-[var(--muted)]",
+                                active
+                                    ? "text-[var(--foreground)] font-semibold text-lg border-b-2 border-[var(--accent)]"
+                                    : "hover:text-[var(--accent)] hover:font-medium"
+                            )}
+                        >
+                            {it.label}
+                        </Link>
+                    );
+                })}
             </nav>
         );
     }
 
     // Client/User navigation
+    const items = [
+        { href: "/dashboard/user", label: "Dashboard" },
+        { href: "/diagnose-disease", label: "Diagnosis" },
+        { href: "/vitals", label: "Vitals" },
+        { href: "/doctors", label: "Doctors" },
+    ];
+
     return (
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/dashboard/user" className="hover:text-sky-700">Dashboard</Link>
-            <Link href="/diagnose-disease" className="hover:text-sky-700">Diagnosis</Link>
-            <Link href="/vitals" className="hover:text-sky-700">Vitals</Link>
-            <Link href="/doctors" className="hover:text-sky-700">Doctors</Link>
+        <nav className="hidden md:flex items-center gap-4">
+            {items.map((it) => {
+                const active = pathname.startsWith(it.href);
+                return (
+                    <Link
+                        key={it.href}
+                        href={it.href}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                            "px-3 py-2 rounded-md transition-all duration-150 text-[var(--muted)]",
+                            active
+                                ? "text-[var(--foreground)] font-semibold text-lg border-b-2 border-[var(--accent)]"
+                                : "hover:text-[var(--accent)] hover:font-medium"
+                        )}
+                    >
+                        {it.label}
+                    </Link>
+                );
+            })}
         </nav>
     );
 }

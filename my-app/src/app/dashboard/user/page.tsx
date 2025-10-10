@@ -332,6 +332,48 @@ export default function UserDashboard() {
     }
   }, []);
 
+  // compute streak from logs: consecutive days ending today (based on log.date YYYY-MM-DD)
+  useEffect(() => {
+    if (!logs || logs.length === 0) {
+      setStreak(0);
+      return;
+    }
+
+    // normalize dates to YYYY-MM-DD
+    const dates = logs.map(l => {
+      // accept either ISO date or localized string - try to parse
+      const d = new Date(l.date);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().slice(0, 10);
+      }
+      return l.date;
+    }).sort().filter(Boolean);
+
+    const uniqueDates = Array.from(new Set(dates)).sort();
+    // count consecutive days up to today
+    const today = new Date().toISOString().slice(0, 10);
+    let streakCount = 0;
+
+    // function to subtract days
+    const subDays = (iso: string, days: number) => {
+      const d = new Date(iso + 'T00:00:00Z');
+      d.setDate(d.getDate() - days);
+      return d.toISOString().slice(0, 10);
+    };
+
+    // walk back from today while dates include those days
+    let i = 0;
+    while (true) {
+      const day = subDays(today, i);
+      if (uniqueDates.includes(day)) {
+        streakCount += 1;
+        i += 1;
+      } else break;
+    }
+
+    setStreak(streakCount);
+  }, [logs]);
+
   // Refresh data function
   const refreshData = useCallback(async () => {
     setRefreshing(true);
@@ -487,9 +529,8 @@ export default function UserDashboard() {
         });
         setPrediction({ label: res.predictedDisease, accuracy: res.accuracy, risk: res.riskScore });
         
-        // Refresh analytics data to get updated charts
-        await fetchAnalytics();
-        setStreak((s) => s + 1);
+  // Refresh analytics data to get updated charts
+  await fetchAnalytics();
       }
     } catch (e) {
       console.error(e);

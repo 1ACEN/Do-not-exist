@@ -27,28 +27,21 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        // Check if user has a doctor assigned
-        if (!user.doctorId) {
-            return NextResponse.json({ 
-                doctorInfo: null,
-                prescriptions: [],
-                doctorNotes: []
-            });
-        }
+        // support multiple assigned doctors stored in doctorIds array
+        const assignedIds: string[] = [];
+        if (user.doctorIds && Array.isArray(user.doctorIds)) assignedIds.push(...user.doctorIds);
+        else if (user.doctorId) assignedIds.push(user.doctorId);
 
-        // Fetch doctor information
-        const doctors = db.collection("users");
-        const doctor = await doctors.findOne({ 
-            _id: new (await import("mongodb")).ObjectId(user.doctorId),
-            role: "doctor"
-        });
-
-        if (!doctor) {
-            return NextResponse.json({ 
-                doctorInfo: null,
-                prescriptions: [],
-                doctorNotes: []
-            });
+        let doctor = null;
+        if (assignedIds.length > 0) {
+            const doctorsCol = db.collection("users");
+            // fetch first doctor as primary for backward-compat display; full list can be returned if needed
+            const docObj = assignedIds[0];
+            try {
+                doctor = await doctorsCol.findOne({ _id: new (await import("mongodb")).ObjectId(docObj), role: "doctor" });
+            } catch (e) {
+                doctor = null;
+            }
         }
 
         // Fetch prescriptions for this user
@@ -65,17 +58,22 @@ export async function GET(req: NextRequest) {
         }).sort({ date: -1 }).toArray();
 
         // Fetch general notices sent by the doctor to all assigned patients
-        const noticesCol = db.collection("notices");
-        const generalNotices = await noticesCol.find({ doctorId: user.doctorId }).sort({ date: -1 }).toArray();
+    const noticesCol = db.collection("notices");
+    const noticeQuery: any = {};
+    if (assignedIds.length === 1) noticeQuery.doctorId = assignedIds[0];
+    else if (assignedIds.length > 1) noticeQuery.doctorId = { $in: assignedIds };
+    const generalNotices = assignedIds.length > 0 ? await noticesCol.find(noticeQuery).sort({ date: -1 }).toArray() : [];
 
         return NextResponse.json({
-            doctorInfo: {
+            // return the first found doctor as primary info and the full list of assigned ids
+            doctorInfo: doctor ? {
                 id: doctor._id.toString(),
                 name: doctor.name,
                 specialization: doctor.specialization || "General Practitioner",
                 contact: doctor.email,
-                assignedDate: user.doctorAssignedDate || new Date().toISOString()
-            },
+                assignedDate: user.doctorLastAssignedDate || new Date().toISOString()
+            } : null,
+            assignedDoctorIds: assignedIds,
             prescriptions: userPrescriptions.map(pres => ({
                 id: pres._id.toString(),
                 medication: pres.medication,

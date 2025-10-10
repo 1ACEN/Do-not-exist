@@ -26,9 +26,9 @@ export function ToastViewport({ toasts, onDismiss }: { toasts: Toast[]; onDismis
     return (
         <div className="fixed right-4 top-20 z-50 flex w-80 flex-col gap-2">
             {toasts.map((t) => (
-                <div key={t.id} className={cn("rounded-md border p-3 shadow bg-white", t.variant === "destructive" ? "border-rose-200" : "border-slate-200")}> 
+                <div key={t.id} className={cn("rounded-md border p-3 shadow bg-[var(--surface)] text-[var(--foreground)]", t.variant === "destructive" ? "border-rose-200" : "border-[var(--card-border)]")}>
                     {t.title && <div className="text-sm font-medium">{t.title}</div>}
-                    {t.description && <div className="text-sm text-slate-600">{t.description}</div>}
+                    {t.description && <div className="text-sm text-[var(--muted)]">{t.description}</div>}
                 </div>
             ))}
         </div>

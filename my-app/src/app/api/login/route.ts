@@ -11,13 +11,10 @@ export async function POST(req: NextRequest) {
         const user = await users.findOne({ email, role });
         if (!user) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
-        if (role === "client") {
-            if (!password || !user.passwordHash) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-            const ok = await comparePassword(password, user.passwordHash);
-            if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-        } else {
-            if (!doctorId || doctorId !== user.doctorId) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-        }
+        // For both clients and doctors, authenticate with email + password
+        if (!password || !user.passwordHash) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+        const ok = await comparePassword(password, user.passwordHash);
+        if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
         const token = signJwt({ sub: user._id.toString(), role: user.role });
         const res = NextResponse.json({ ok: true, role: user.role });

@@ -20,8 +20,7 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            const payload: any = { role, email };
-            if (role === "client") payload.password = password; else payload.doctorId = password; // reuse input for simplicity
+            const payload: any = { role, email, password };
             const res = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error("Login failed");
             try {
@@ -29,7 +28,32 @@ export default function LoginPage() {
                 window.__authRefresh?.();
                 localStorage.setItem("auth-refresh", String(Date.now()));
             } catch {}
-            router.replace(role === "client" ? "/" : "/analyst");
+            // Redirect users to their dashboard pages.
+            if (role === "doctor") {
+                router.replace('/dashboard/doctor');
+            } else {
+                try {
+                    // check if user has vitals for today
+                    const r = await fetch('/api/vitals');
+                    if (r.ok) {
+                        const data = await r.json();
+                        const items = data.items || [];
+                        const today = new Date().toISOString().slice(0,10);
+                        const hasToday = items.some((it: any) => {
+                            try {
+                                const d = new Date(it.date);
+                                return d.toISOString().slice(0,10) === today;
+                            } catch { return false; }
+                        });
+                        if (hasToday) router.replace('/dashboard/user');
+                        else router.replace('/daily-vitals');
+                    } else {
+                        router.replace('/dashboard/user');
+                    }
+                } catch (e) {
+                    router.replace('/dashboard/user');
+                }
+            }
         } finally {
             setLoading(false);
         }
@@ -135,8 +159,8 @@ function LoginForm({ roleLabel, onSubmit, email, setEmail, password, setPassword
                         <Input id={`email-${roleLabel}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" suppressHydrationWarning />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor={`password-${roleLabel}`}>{roleLabel === "Doctor" ? "Doctor ID" : "Password"}</Label>
-                        <Input id={`password-${roleLabel}`} type={roleLabel === "Doctor" ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        <Label htmlFor={`password-${roleLabel}`}>Password</Label>
+                        <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
                     <Button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
                     <p className="text-xs text-slate-500">You are signing in as <span className="font-medium">{roleLabel}</span>.</p>

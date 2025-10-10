@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
             user.passwordHash = await hashPassword(password);
         } else if (role === "doctor") {
             // doctor registration
-            if (typeof age !== "number" || !body.specialization) {
+            if (typeof age !== "number" || !body.specialization || !password) {
                 return NextResponse.json({ error: "Missing doctor fields" }, { status: 400 });
             }
             user.age = age;
             user.specialization = String(body.specialization);
-            // doctors may optionally provide contact/email which is already set
+            user.passwordHash = await hashPassword(password);
         } else {
             return NextResponse.json({ error: "Unknown role" }, { status: 400 });
         }

@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
     const doctor = await users.findOne({ _id: new ObjectId(doctorId), role: "doctor" });
     if (!doctor) return NextResponse.json({ error: "Doctor not found" }, { status: 404 });
 
-    await users.updateOne({ _id: new ObjectId(payload.sub) }, { $set: { doctorId: doctorId, doctorAssignedDate: new Date() } });
+    // allow multiple doctor assignments; add to doctorIds array on the user
+    await users.updateOne(
+      { _id: new ObjectId(payload.sub) },
+      { $addToSet: { doctorIds: doctorId }, $set: { doctorLastAssignedDate: new Date() } }
+    );
 
     return NextResponse.json({ ok: true, doctor: { id: doctor._id.toString(), name: doctor.name, specialization: doctor.specialization || "General", contact: doctor.email } });
   } catch (e) {

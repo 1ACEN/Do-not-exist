@@ -19,12 +19,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body className={cn(inter.variable, "antialiased bg-slate-50 text-slate-900")}> 
-        <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+      <body className={cn(inter.variable, "antialiased bg-[var(--background)] text-[var(--foreground)]")}> 
+        <header className="sticky top-0 z-30 w-full border-b border-[var(--card-border)] bg-[var(--surface)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/75 shadow-sm">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-semibold text-slate-900">
-              <Stethoscope className="h-6 w-6 text-[var(--accent)]" />
-              <span>Healthcare Eclipse</span>
+            <Link href="/" className="flex items-center gap-3 font-semibold text-[var(--foreground)]">
+              <div className="rounded-full bg-[var(--accent)]/10 p-2">
+                <Stethoscope className="h-6 w-6 text-[var(--accent)]" />
+              </div>
+              <span className="text-lg">Healthcare Eclipse</span>
             </Link>
             <SiteNav />
             <div className="flex items-center gap-3">
@@ -40,24 +42,24 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             {children}
           </main>
         </Providers>
-        <footer className="mt-10 border-t border-slate-200 bg-[#0b0b0c]">
+        <footer className="mt-10 border-t border-[var(--card-border)] bg-gradient-to-t from-[var(--surface)] to-transparent">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-8 md:grid-cols-3 text-sm">
             <div>
-              <div className="font-semibold text-white">Healthcare Eclipse</div>
-              <p className="mt-2 text-slate-400">Detect silent diseases early with trustworthy AI insights.</p>
+              <div className="font-semibold text-[var(--foreground)]">Healthcare Eclipse</div>
+              <p className="mt-2 text-[var(--muted)]">Detect silent diseases early with trustworthy AI insights.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-slate-400">
-              <Link href="/client" className="hover:text-white">Client App</Link>
-              <Link href="/analyst" className="hover:text-white">Analyst</Link>
-              <Link href="/detective" className="hover:text-white">AI Insights</Link>
-              <Link href="/admin" className="hover:text-white">Analytics</Link>
-              <Link href="/login" className="hover:text-white">Login</Link>
-              <Link href="/register" className="hover:text-white">Register</Link>
+            <div className="grid grid-cols-2 gap-3 text-[var(--muted)]">
+              <Link href="/client" className="hover:text-[var(--foreground)]">Client App</Link>
+              <Link href="/analyst" className="hover:text-[var(--foreground)]">Analyst</Link>
+              <Link href="/detective" className="hover:text-[var(--foreground)]">AI Insights</Link>
+              <Link href="/admin" className="hover:text-[var(--foreground)]">Analytics</Link>
+              <Link href="/login" className="hover:text-[var(--foreground)]">Login</Link>
+              <Link href="/register" className="hover:text-[var(--foreground)]">Register</Link>
             </div>
-            <div className="md:text-right text-slate-400">© 2025 Healthcare Eclipse • All rights reserved</div>
+            <div className="md:text-right text-[var(--muted)]">© 2025 Healthcare Eclipse • All rights reserved</div>
           </div>
-          <div className="border-t border-white/10">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-slate-500">
+          <div className="border-t border-[var(--card-border)]">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-[var(--muted)]">
               <span>Built with Next.js • TypeScript • Tailwind</span>
               <span className="text-[var(--accent)]">Healthy minds, healthy code.</span>
             </div>
