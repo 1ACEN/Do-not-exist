@@ -48,11 +48,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             </div>
             <div className="grid grid-cols-2 gap-3 text-slate-400">
               <Link href="/client" className="hover:text-white">Client App</Link>
-              <Link href="/analyst" className="hover:text-white">Doctor Dashboard</Link>
+              <Link href="/analyst" className="hover:text-white">Analyst</Link>
               <Link href="/detective" className="hover:text-white">AI Insights</Link>
               <Link href="/admin" className="hover:text-white">Analytics</Link>
-              <Link href="/surveys" className="hover:text-white">Surveys</Link>
-              <Link href="#" className="hover:text-white">Privacy</Link>
+              <Link href="/login" className="hover:text-white">Login</Link>
+              <Link href="/register" className="hover:text-white">Register</Link>
             </div>
             <div className="md:text-right text-slate-400">© 2025 Healthcare Eclipse • All rights reserved</div>
           </div>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export function SiteNav() {
-    const [hasUser, setHasUser] = useState<boolean>(false);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -12,9 +12,9 @@ export function SiteNav() {
             try {
                 const res = await fetch("/api/me", { cache: "no-store" });
                 const data = await res.json();
-                if (mounted) setHasUser(!!data.user);
+                if (mounted) setUser(data.user);
             } catch {
-                if (mounted) setHasUser(false);
+                if (mounted) setUser(null);
             }
         };
         refresh();
@@ -30,15 +30,25 @@ export function SiteNav() {
         };
     }, []);
 
-    if (!hasUser) return null;
+    if (!user) return null;
 
+    // Role-based navigation
+    if (user.role === "doctor") {
+        return (
+            <nav className="hidden md:flex items-center gap-6 text-sm">
+                <Link href="/dashboard/doctor" className="hover:text-sky-700">Dashboard</Link>
+                <Link href="/analyst" className="hover:text-sky-700">Analyst</Link>
+                <Link href="/admin" className="hover:text-sky-700">Analytics</Link>
+            </nav>
+        );
+    }
+
+    // Client/User navigation
     return (
         <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/client" className="hover:text-sky-700">Client</Link>
-            <Link href="/detective" className="hover:text-sky-700">Detective</Link>
-            <Link href="/analyst" className="hover:text-sky-700">Analyst</Link>
-            <Link href="/surveys" className="hover:text-sky-700">Surveys</Link>
-            <Link href="/admin" className="hover:text-sky-700">Analytics</Link>
+            <Link href="/dashboard/user" className="hover:text-sky-700">Dashboard</Link>
+            <Link href="/diagnose-disease" className="hover:text-sky-700">Diagnosis</Link>
+            <Link href="/vitals" className="hover:text-sky-700">Vitals</Link>
         </nav>
     );
 }

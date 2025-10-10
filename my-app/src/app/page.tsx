@@ -72,10 +72,26 @@ export default function Home() {
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8">
           <h3 className="text-xl font-semibold text-slate-900">Start your journey</h3>
           <p className="mt-2 text-slate-600">Create an account to log daily health, track trends, and receive early warnings powered by AI. Share insights securely with your doctor.</p>
+          <div className="mt-4 flex gap-3">
+            <Link href="/register">
+              <Button>Get Started</Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="outline">Login</Button>
+            </Link>
+          </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8">
           <h3 className="text-xl font-semibold text-slate-900">How it works</h3>
           <p className="mt-2 text-slate-600">We combine your everyday signals like sleep, heart rate, and mood with an AI early-warning core and a clinician dashboard for oversight.</p>
+          <div className="mt-4 flex gap-3">
+            <Link href="/client">
+              <Button variant="outline">Client App</Button>
+            </Link>
+            <Link href="/analyst">
+              <Button variant="outline">Analyst</Button>
+            </Link>
+          </div>
         </div>
       </section>
     </div>

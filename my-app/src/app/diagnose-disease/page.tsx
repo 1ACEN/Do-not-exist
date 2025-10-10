@@ -14,7 +14,7 @@ export default function DiagnoseDiseasePage() {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ prediction?: string | null; snippet?: string | null; error?: string | null } | null>(null);
+    const [result, setResult] = useState<{ prediction?: string | null; confidence?: string | null; note?: string | null; error?: string | null } | null>(null);
 
     const filtered = useMemo(() => {
         const q = query.toLowerCase();
@@ -42,9 +42,14 @@ export default function DiagnoseDiseasePage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data?.error || "Diagnosis failed");
-            setResult({ prediction: data.prediction, snippet: data.snippet, error: null });
+            setResult({ 
+                prediction: data.prediction, 
+                confidence: data.confidence,
+                note: data.note,
+                error: null 
+            });
         } catch (e: any) {
-            setResult({ error: e?.message || "Diagnosis failed", prediction: null, snippet: null });
+            setResult({ error: e?.message || "Diagnosis failed", prediction: null, confidence: null, note: null });
         } finally {
             setLoading(false);
         }
@@ -83,8 +88,11 @@ export default function DiagnoseDiseasePage() {
                         <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
                             <div className="font-medium">Prediction</div>
                             <div className="mt-1">{result.prediction ?? "No explicit prediction found in response."}</div>
-                            {result.snippet && (
-                                <div className="mt-2 text-slate-600">Response snippet: <span className="font-mono text-xs">{result.snippet}</span></div>
+                            {result.confidence && (
+                                <div className="mt-2 text-slate-600">Confidence: <span className="font-medium">{result.confidence}</span></div>
+                            )}
+                            {result.note && (
+                                <div className="mt-2 text-amber-600 text-xs italic">{result.note}</div>
                             )}
                         </div>
                     )}
