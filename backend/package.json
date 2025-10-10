@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Vikas345saini/Do-not-exist#readme",
+  "bugs": {
+    "url": "https://github.com/Vikas345saini/Do-not-exist/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vikas345saini/Do-not-exist.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1"
+  }
+}
