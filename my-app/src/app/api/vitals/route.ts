@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongo";
 import { verifyJwt } from "@/lib/auth";
+import { ObjectId } from "mongodb";
 
 function getUserIdFromReq(req: NextRequest): string | null {
     const token = req.cookies.get("token")?.value;
@@ -43,6 +44,45 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
     };
     await vitals.insertOne(doc);
+    return NextResponse.json({ ok: true });
+}
+
+export async function PUT(req: NextRequest) {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    const body = await req.json();
+    const bodyId = body?.id;
+    const useId = id || bodyId;
+    if (!useId || !ObjectId.isValid(useId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const allowed = ["date","sleep","heartRate","steps","water","diet","mood","stress","notes","systolic","diastolic"];
+    const updates: any = {};
+    for (const k of allowed) if (k in body) updates[k] = body[k];
+    if (updates.date) updates.date = new Date(updates.date);
+
+    const db = await getDb();
+    const vitals = db.collection("vitals");
+    const res = await vitals.findOneAndUpdate({ _id: new ObjectId(useId), userId }, { $set: updates }, { returnDocument: "after" as any });
+    if (!res || !res.value) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ ok: true, item: res.value });
+}
+
+export async function DELETE(req: NextRequest) {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    const body = await req.json().catch(() => ({}));
+    const bodyId = body?.id;
+    const useId = id || bodyId;
+    if (!useId || !ObjectId.isValid(useId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const db = await getDb();
+    const vitals = db.collection("vitals");
+    const r = await vitals.deleteOne({ _id: new ObjectId(useId), userId });
+    if (r.deletedCount === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ ok: true });
 }
 
