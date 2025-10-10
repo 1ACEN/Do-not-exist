@@ -354,15 +354,21 @@ export default function UserDashboard() {
           }
           setUser(data.user);
           
-          // Fetch doctor information
+          // Fetch doctor information (and prescriptions/notices)
           try {
             const doctorRes = await fetch("/api/doctor-info");
             const doctorData = await doctorRes.json();
             
             if (doctorRes.ok) {
               setDoctorInfo(doctorData.doctorInfo);
-              setPrescriptions(doctorData.prescriptions);
-              setDoctorNotes(doctorData.doctorNotes);
+              setPrescriptions(doctorData.prescriptions || []);
+              setDoctorNotes(doctorData.doctorNotes || []);
+              // Add general notices from doctor
+              if (doctorData.notices && Array.isArray(doctorData.notices)) {
+                // prepend notices as doctorNotes for display
+                const noticesAsNotes = doctorData.notices.map((n: any) => ({ id: n.id, date: n.date, note: n.message, type: 'general' }));
+                setDoctorNotes(prev => [...noticesAsNotes, ...(prev || [])]);
+              }
             }
           } catch (doctorError) {
             console.error("Failed to fetch doctor info:", doctorError);
@@ -384,6 +390,34 @@ export default function UserDashboard() {
     };
     fetchUser();
   }, [router]);
+
+  // Poll for doctor-info periodically so assignments and notices appear in near real-time
+  useEffect(() => {
+    let mounted = true;
+    const tick = async () => {
+      try {
+        const res = await fetch('/api/doctor-info');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        setDoctorInfo(data.doctorInfo);
+        setPrescriptions(data.prescriptions || []);
+        // merge notices
+        if (data.notices) {
+          setDoctorNotes(prev => {
+            const incoming = data.notices.map((n: any) => ({ id: n.id, date: n.date, note: n.message, type: 'general' }));
+            // simple dedupe by id
+            const ids = new Set(prev.map(p => p.id));
+            return [...incoming.filter((i: any) => !ids.has(i.id)), ...prev];
+          });
+        }
+      } catch (e) { /* ignore */ }
+    };
+    const id = setInterval(tick, 10000);
+    // run immediate
+    tick();
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
 
   // Show loading state
   if (loading) {

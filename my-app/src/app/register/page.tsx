@@ -11,7 +11,7 @@ import { HeartPulse, Activity, Stethoscope } from "lucide-react";
 
 export default function RegisterPage() {
     const params = useSearchParams();
-    const [role, setRole] = useState<"client">("client");
+    const [role, setRole] = useState<"client" | "doctor">("client");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -19,7 +19,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    // Always register clients. Doctor registration is disabled.
+    // Default to client, but allow doctor selection in the UI
     useEffect(() => {
         setRole("client");
     }, [params]);
@@ -38,39 +38,34 @@ export default function RegisterPage() {
     return (
         <div className="mx-auto max-w-5xl">
             <div className="mb-4 inline-flex rounded-lg border border-slate-300 bg-white p-1">
-                <span className="px-4 py-1.5 text-sm rounded-md bg-sky-600 text-white">Client</span>
+                <button className={`px-4 py-1.5 text-sm rounded-md ${role === "client" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`} onClick={() => setRole("client")} type="button">Client</button>
+                <button className={`px-4 py-1.5 text-sm rounded-md ${role === "doctor" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`} onClick={() => setRole("doctor")} type="button">Doctor</button>
             </div>
 
             <Card className="overflow-hidden border-slate-300">
                 <div className="grid md:grid-cols-2 min-h-[520px]">
                     <AnimatePresence mode="wait" initial={false}>
                         {role === "client" ? (
-                            <motion.div
-                                key="client-form-left"
-                                initial={{ x: -16, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: -16, opacity: 0 }}
-                                transition={{ duration: 0.35 }}
-                                className="order-1"
-                            >
-                                <FormPanel roleLabel="Client" />
+                            <motion.div key="client-form-left" initial={{ x: -16, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -16, opacity: 0 }} transition={{ duration: 0.35 }} className="order-1">
+                                <FormPanel role={role} setRole={setRole} />
                             </motion.div>
-                        ) : null}
+                        ) : (
+                            <motion.div key="doctor-form-left" initial={{ x: -16, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -16, opacity: 0 }} transition={{ duration: 0.35 }} className="order-1">
+                                <FormPanel role={role} setRole={setRole} />
+                            </motion.div>
+                        )}
                     </AnimatePresence>
 
                     <AnimatePresence mode="wait" initial={false}>
                         {role === "client" ? (
-                            <motion.div
-                                key="client-info-right"
-                                initial={{ x: 16, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: 16, opacity: 0 }}
-                                transition={{ duration: 0.35 }}
-                                className="order-2 hidden md:block"
-                            >
+                            <motion.div key="client-info-right" initial={{ x: 16, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 16, opacity: 0 }} transition={{ duration: 0.35 }} className="order-2 hidden md:block">
                                 <InfoPanel type="client" />
                             </motion.div>
-                        ) : null}
+                        ) : (
+                            <motion.div key="doctor-info-right" initial={{ x: 16, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 16, opacity: 0 }} transition={{ duration: 0.35 }} className="order-2 hidden md:block">
+                                <InfoPanel type="doctor" />
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </div>
             </Card>
@@ -116,7 +111,7 @@ function InfoPanel({ type }: { type: "client" | "doctor" }) {
     );
 }
 
-function FormPanel({ roleLabel }: { roleLabel: "Client" }) {
+function FormPanel({ role, setRole }: { role: "client" | "doctor"; setRole: (r: "client" | "doctor") => void }) {
     const router = useRouter();
     const [name, setName] = useState("");
     const [age, setAge] = useState<number | "">("");
@@ -125,6 +120,7 @@ function FormPanel({ roleLabel }: { roleLabel: "Client" }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [doctorId, setDoctorId] = useState("");
+    const [specialization, setSpecialization] = useState("");
     const [loading, setLoading] = useState(false);
 
     async function onSubmit(e: React.FormEvent) {
@@ -132,66 +128,76 @@ function FormPanel({ roleLabel }: { roleLabel: "Client" }) {
         setLoading(true);
         try {
             const payload: any = {
-                role: "client",
+                role,
                 name,
                 age: age === "" ? undefined : age,
                 email,
                 height: height === "" ? undefined : height,
                 weight: weight === "" ? undefined : weight,
                 password,
-            };
+            } as any;
+            if (role === "doctor") {
+                payload.specialization = specialization;
+            }
+
             const res = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-            if (!res.ok) throw new Error("Register failed");
-            router.replace("/");
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || "Register failed");
+            }
+            router.replace("/login?registered=1");
         } finally {
             setLoading(false);
         }
     }
 
-    const isDoctor = false;
-
     return (
         <div>
-            <CardHeader className="border-b border-slate-100">
+                    <CardHeader className="border-b border-slate-100">
                 <CardTitle className="flex items-center justify-between">
                     <span>Create account</span>
-                    <span className="rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white tracking-wide">{roleLabel}</span>
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
                 <form className="grid gap-4" onSubmit={onSubmit}>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <div className="grid gap-2">
-                            <Label htmlFor={`name-${roleLabel}`}>Full name</Label>
-                            <Input id={`name-${roleLabel}`} value={name} onChange={(e) => setName(e.target.value)} required />
+                            <Label htmlFor={`name-${role}`}>Full name</Label>
+                            <Input id={`name-${role}`} value={name} onChange={(e) => setName(e.target.value)} required />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor={`age-${roleLabel}`}>Age</Label>
-                            <Input id={`age-${roleLabel}`} type="number" min={0} max={120} value={age as number | undefined} onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))} required />
+                            <Label htmlFor={`age-${role}`}>Age</Label>
+                            <Input id={`age-${role}`} type="number" min={0} max={120} value={age as number | undefined} onChange={(e) => setAge(e.target.value === "" ? "" : Number(e.target.value))} required />
                         </div>
                     </div>
-                    {!isDoctor && (
+                    {role !== 'doctor' && (
                         <div className="grid gap-2 sm:grid-cols-2">
                             <div className="grid gap-2">
-                                <Label htmlFor={`height-${roleLabel}`}>Height (cm)</Label>
-                                <Input id={`height-${roleLabel}`} type="number" min={30} max={250} value={height as number | undefined} onChange={(e) => setHeight(e.target.value === "" ? "" : Number(e.target.value))} required />
+                                <Label htmlFor={`height-${role}`}>Height (cm)</Label>
+                                <Input id={`height-${role}`} type="number" min={30} max={250} value={height as number | undefined} onChange={(e) => setHeight(e.target.value === "" ? "" : Number(e.target.value))} required />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor={`weight-${roleLabel}`}>Weight (kg)</Label>
-                                <Input id={`weight-${roleLabel}`} type="number" min={2} max={400} value={weight as number | undefined} onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))} required />
+                                <Label htmlFor={`weight-${role}`}>Weight (kg)</Label>
+                                <Input id={`weight-${role}`} type="number" min={2} max={400} value={weight as number | undefined} onChange={(e) => setWeight(e.target.value === "" ? "" : Number(e.target.value))} required />
                             </div>
                         </div>
                     )}
+                    {role === 'doctor' && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="specialization">Specialization / Field</Label>
+                            <Input id="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="e.g. Cardiology, General Medicine" required />
+                        </div>
+                    )}
                     <div className="grid gap-2">
-                        <Label htmlFor={`email-${roleLabel}`}>Email</Label>
-                        <Input id={`email-${roleLabel}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                        <Label htmlFor={`email-${role}`}>Email</Label>
+                        <Input id={`email-${role}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor={`password-${roleLabel}`}>Password</Label>
-                        <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                        <Label htmlFor={`password-${role}`}>Password</Label>
+                        <Input id={`password-${role}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
                     <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create account"}</Button>
-                    <p className="text-xs text-slate-500">You are registering as <span className="font-medium">{roleLabel}</span>.</p>
+                    <p className="text-xs text-slate-500">You are registering as <span className="font-medium">{role === 'doctor' ? 'Doctor' : 'Client'}</span>.</p>
                 </form>
             </CardContent>
         </div>

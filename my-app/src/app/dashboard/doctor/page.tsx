@@ -181,29 +181,42 @@ export default function DoctorDashboard() {
       }
     };
     fetchUser();
-    // fetch patients after user loads
-    const fetchPatients = async () => {
+    // Poll assigned patients for this doctor
+    let mounted = true;
+    const tick = async () => {
       try {
-        const res = await fetch("/api/patients");
-        if (res.ok) {
-          const data = await res.json();
-          const items = (data.items || []).map((it: any) => ({
-            ...it,
-            id: it._id ? String(it._1?._id ?? it._id) : it.id ?? String(it._id ?? ""),
-            // normalize common fields
-            riskLevel: it.riskLevel ?? "low",
-            alerts: it.alerts ?? [],
-            vitals: it.vitals ?? { heartRate: 0, bloodPressure: { systolic: 0, diastolic: 0 }, temperature: 98.6, weight: 0 },
-            lastVisit: it.lastVisit ?? new Date().toISOString(),
-          } as Patient));
-          setPatients(items);
-        }
+        const res = await fetch('/api/doctor/patients');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        const items = (data.items || []).map((p: any) => ({ id: p.id, name: p.name, age: p.age || 0, gender: p.gender || 'Unknown', lastVisit: p.assignedDate || new Date().toISOString(), riskLevel: 'low', alerts: [], vitals: { heartRate: 0, bloodPressure: { systolic: 0, diastolic: 0 }, temperature: 98.6, weight: 0 }, conditions: [], medications: [] } as Patient));
+        setPatients(items);
       } catch (e) {
-        console.error("Failed to load patients", e);
+        // ignore
       }
     };
-    // keeping mockPatients for now; backend patients were removed per request
+    tick();
+    const id = setInterval(tick, 8000);
+    return () => { mounted = false; clearInterval(id); };
   }, [router]);
+
+  // send prescription to a user
+  const sendPrescription = async (userId: string, payload: { medication: string; dosage?: string; frequency?: string; duration?: string; notes?: string }) => {
+    try {
+      const res = await fetch('/api/prescriptions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ...payload }) });
+      if (!res.ok) throw new Error('Failed');
+      alert('Prescription sent');
+    } catch (e) { console.error(e); alert('Failed to send prescription'); }
+  };
+
+  // send notice to all assigned patients
+  const sendNotice = async (title: string, message: string) => {
+    try {
+      const res = await fetch('/api/doctor-notices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, message }) });
+      if (!res.ok) throw new Error('Failed');
+      alert('Notice sent');
+    } catch (e) { console.error(e); alert('Failed to send notice'); }
+  };
 
   // Show loading state
   if (loading) {
@@ -283,73 +296,76 @@ export default function DoctorDashboard() {
     console.log("Exporting report for", selectedPatient?.name);
   };
 
+  // small helper to create initials for avatar
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name.split(" ").map(n => n[0]).slice(0,2).join("").toUpperCase();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-gradient-to-r from-sky-50 via-white to-rose-50 p-6 rounded-lg shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Doctor Dashboard
           </h1>
-          <p className="text-slate-600 mt-1">
-            Welcome back, Dr. {user?.name || "User"}. Monitor your patients and track their health progress.
+          <p className="text-slate-600 mt-1 max-w-xl">
+            Welcome back, Dr. {user?.name || "User"}. Monitor your patients and track their health progress with quick actions and insights.
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-sm text-slate-600">Total Patients</div>
+            <div className="text-sm text-slate-500">Total Patients</div>
             <div className="text-2xl font-bold text-blue-600">{patients.length}</div>
           </div>
-          <Stethoscope className="h-8 w-8 text-slate-400" />
+          <div className="bg-white rounded-full p-2 shadow">
+            <Stethoscope className="h-7 w-7 text-slate-500" />
+          </div>
         </div>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
+          <CardContent className="p-6 bg-gradient-to-b from-white to-sky-50">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total Patients</p>
                 <p className="text-2xl font-bold text-slate-900">{patients.length}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-600" />
+              <div className="bg-blue-50 p-2 rounded-md">
+                <Users className="h-7 w-7 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
+          <CardContent className="p-6 bg-gradient-to-b from-white to-rose-50">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Active Alerts</p>
                 <p className="text-2xl font-bold text-red-600">{totalAlerts}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-red-600" />
+              <div className="bg-red-50 p-2 rounded-md">
+                <AlertTriangle className="h-7 w-7 text-red-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
+          <CardContent className="p-6 bg-gradient-to-b from-white to-emerald-50">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">High Risk</p>
-                <p className="text-2xl font-bold text-red-600">{riskStats.high}</p>
+                <p className="text-sm font-medium text-slate-600">Overview</p>
+                <p className="text-2xl font-bold text-slate-900">Quick Insights</p>
+                <p className="text-xs text-slate-500 mt-1">Risk: {riskStats.high} high • {riskStats.medium} medium • {riskStats.low} low</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Reports Generated</p>
-                <p className="text-2xl font-bold text-green-600">24</p>
+              <div className="bg-emerald-50 p-2 rounded-md">
+                <BarChart3 className="h-7 w-7 text-emerald-600" />
               </div>
-              <FileText className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
@@ -381,17 +397,22 @@ export default function DoctorDashboard() {
                   {filteredPatients.map((patient) => (
                     <div 
                       key={patient.id} 
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg border cursor-pointer transition-all transform ${
                         selectedPatient?.id === patient.id 
-                          ? "border-blue-500 bg-blue-50" 
-                          : "border-slate-200 hover:border-slate-300"
+                          ? "border-blue-500 bg-blue-50 shadow-md -translate-y-0.5" 
+                          : "border-slate-200 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5"
                       }`}
                       onClick={() => setSelectedPatient(patient)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-slate-900">{patient.name}</p>
-                          <p className="text-sm text-slate-600">{patient.age} years • {patient.gender}</p>
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg,#60a5fa,#7c3aed)' }}>
+                            {getInitials(patient.name)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{patient.name}</p>
+                            <p className="text-sm text-slate-600">{patient.age} years • {patient.gender}</p>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRiskColor(patient.riskLevel)}`}>
@@ -457,11 +478,27 @@ export default function DoctorDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Message
-                      </Button>
-                      <Button size="sm" onClick={exportReport}>
+                      <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" onClick={() => {
+                        const med = prompt('Medication name');
+                        if (!med) return;
+                        const dose = prompt('Dosage (e.g. 500mg)') || '';
+                        const freq = prompt('Frequency (e.g. Twice daily)') || '';
+                        const dur = prompt('Duration (e.g. 30 days)') || '';
+                        sendPrescription(selectedPatient!.id, { medication: med, dosage: dose, frequency: freq, duration: dur });
+                      }}>
+                        <MessageSquare className="h-4 w-4" />
+                        Send Prescription
+                      </button>
+                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => {
+                        const title = prompt('Notice title') || 'Important';
+                        const msg = prompt('Message') || '';
+                        if (!msg) return;
+                        sendNotice(title, msg);
+                      }}>
+                        <FileText className="h-4 w-4" />
+                        Send Notice
+                      </button>
+                      <Button size="sm" variant={"ghost" as any} onClick={exportReport}>
                         <Download className="h-4 w-4 mr-2" />
                         Export Report
                       </Button>

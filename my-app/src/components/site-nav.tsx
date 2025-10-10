@@ -39,6 +39,7 @@ export function SiteNav() {
                 <Link href="/dashboard/doctor" className="hover:text-sky-700">Dashboard</Link>
                 <Link href="/analyst" className="hover:text-sky-700">Analyst</Link>
                 <Link href="/admin" className="hover:text-sky-700">Analytics</Link>
+                <Link href="/doctors" className="hover:text-sky-700">Doctors</Link>
             </nav>
         );
     }
@@ -49,6 +50,7 @@ export function SiteNav() {
             <Link href="/dashboard/user" className="hover:text-sky-700">Dashboard</Link>
             <Link href="/diagnose-disease" className="hover:text-sky-700">Diagnosis</Link>
             <Link href="/vitals" className="hover:text-sky-700">Vitals</Link>
+            <Link href="/doctors" className="hover:text-sky-700">Doctors</Link>
         </nav>
     );
 }

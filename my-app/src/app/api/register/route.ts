@@ -20,10 +20,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // Prevent registration of doctors through the public endpoint.
-        if (role === "doctor") {
-            return NextResponse.json({ error: "Doctor registration is disabled" }, { status: 403 });
-        }
+        // Allow public registration for doctors and clients. Validate fields below.
 
         const db = await getDb();
         const users = db.collection("users");
@@ -43,12 +40,16 @@ export async function POST(req: NextRequest) {
             user.height = height;
             user.weight = weight;
             user.passwordHash = await hashPassword(password);
-        } else {
-            if (typeof age !== "number" || !doctorId) {
+        } else if (role === "doctor") {
+            // doctor registration
+            if (typeof age !== "number" || !body.specialization) {
                 return NextResponse.json({ error: "Missing doctor fields" }, { status: 400 });
             }
             user.age = age;
-            user.doctorId = doctorId;
+            user.specialization = String(body.specialization);
+            // doctors may optionally provide contact/email which is already set
+        } else {
+            return NextResponse.json({ error: "Unknown role" }, { status: 400 });
         }
 
         const { insertedId } = await users.insertOne(user);

@@ -64,6 +64,10 @@ export async function GET(req: NextRequest) {
             userId: payload.sub 
         }).sort({ date: -1 }).toArray();
 
+        // Fetch general notices sent by the doctor to all assigned patients
+        const noticesCol = db.collection("notices");
+        const generalNotices = await noticesCol.find({ doctorId: user.doctorId }).sort({ date: -1 }).toArray();
+
         return NextResponse.json({
             doctorInfo: {
                 id: doctor._id.toString(),
@@ -86,7 +90,8 @@ export async function GET(req: NextRequest) {
                 date: note.date,
                 note: note.note,
                 type: note.type || "general"
-            }))
+            })),
+            notices: generalNotices.map(n => ({ id: n._id.toString(), title: n.title, message: n.message, date: n.date }))
         });
 
     } catch (error) {

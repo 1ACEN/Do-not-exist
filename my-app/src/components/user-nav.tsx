@@ -52,17 +52,18 @@ export function UserNav() {
                 {open && (
                     <div className="absolute right-0 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow">
                         <Link href="/profile" className="block px-3 py-2 text-sm hover:bg-slate-50">Profile</Link>
-+                        {/* Show Analytics link for authorized roles */}
-+
-+                        {user && (user.role === "doctor" || user.role === "analyst" || user.role === "admin") && (
+                        {/* Show Analytics link for authorized roles */}
+                        {user && (user.role === "doctor" || user.role === "analyst" || user.role === "admin") && (
                             <Link href="/admin" className="block px-3 py-2 text-sm hover:bg-slate-50">Analytics</Link>
                         )}
-+
-+                        <button onClick={async () => { await fetch("/api/me", { method: "POST" }); try { // @ts-ignore
+                        {/* Allow regular users to assign a doctor */}
+                        {user && (!user.role || user.role === "user") && (
+                            <Link href="/doctors" className="block px-3 py-2 text-sm hover:bg-slate-50">Assign Doctor</Link>
+                        )}
+                        <button onClick={async () => { await fetch("/api/me", { method: "POST" }); try { // @ts-ignore
                             window.__authRefresh?.(); localStorage.setItem("auth-refresh", String(Date.now())); } catch {} window.location.href = "/"; }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Log out</button>
                     </div>
                 )}
-*** End Patch
             </div>
         );
     }
