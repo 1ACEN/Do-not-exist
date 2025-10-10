@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/mongo";
+import { comparePassword, signJwt } from "@/lib/auth";
+
+export async function POST(req: NextRequest) {
+    try {
+        const { role, email, password, doctorId } = await req.json();
+        const db = await getDb();
+        const users = db.collection("users");
+
+        const user = await users.findOne({ email, role });
+        if (!user) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+
+        if (role === "client") {
+            if (!password || !user.passwordHash) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+            const ok = await comparePassword(password, user.passwordHash);
+            if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+        } else {
+            if (!doctorId || doctorId !== user.doctorId) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+        }
+
+        const token = signJwt({ sub: user._id.toString(), role: user.role });
+        const res = NextResponse.json({ ok: true, role: user.role });
+        res.cookies.set("token", token, { httpOnly: true, path: "/", sameSite: "lax" });
+        return res;
+    } catch (e: any) {
+        console.error(e);
+        return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+    }
+}
+
+
