@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export function UserNav() {
-    const [user, setUser] = useState<any | undefined>(undefined);
+    // undefined = loading, null = not authenticated, object = authenticated
+    const [user, setUser] = useState<any | undefined>(null);
     const [open, setOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -61,7 +62,10 @@ export function UserNav() {
                             <Link href="/doctors" className="block px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Assign Doctor</Link>
                         )}
                         <button onClick={async () => { await fetch("/api/me", { method: "POST" }); try { // @ts-ignore
-                            window.__authRefresh?.(); localStorage.setItem("auth-refresh", String(Date.now())); } catch {} window.location.href = "/"; }} className="block w-full text-left px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Log out</button>
+                            window.__authRefresh?.(); // refresh the other nav too if present
+                            // @ts-ignore
+                            window.__authRefreshSiteNav?.();
+                            localStorage.setItem("auth-refresh", String(Date.now())); } catch {} window.location.href = "/"; }} className="block w-full text-left px-3 py-2 text-sm hover:bg-[var(--accent-100)]">Log out</button>
                     </div>
                 )}
             </div>

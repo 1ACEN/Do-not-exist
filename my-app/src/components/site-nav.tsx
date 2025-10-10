@@ -24,15 +24,21 @@ export function SiteNav() {
             if (e.key === "auth-refresh") refresh();
         };
         window.addEventListener("storage", onStorage);
+        // expose manual triggers so the login flow can refresh both navs.
+        // Some code calls window.__authRefresh (UserNav) so also set it here.
         // @ts-ignore optional manual trigger
         window.__authRefreshSiteNav = refresh;
+        // @ts-ignore
+        window.__authRefresh = refresh;
         return () => {
             mounted = false;
             window.removeEventListener("storage", onStorage);
         };
     }, []);
 
-    if (!user) return null;
+    // If no user, render nothing for role-specific tabs. We avoid layout shift by
+    // still returning an empty nav element so header spacing remains stable.
+    if (!user) return <nav className="hidden md:flex items-center gap-4" />;
 
     // Role-based navigation
     const pathname = usePathname() ?? "/";
