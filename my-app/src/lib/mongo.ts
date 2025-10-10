@@ -4,10 +4,18 @@ let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient> | null = null;
 
 function getUri() {
-    const uri = process.env.MONGODB_URI as string | undefined;
+    // Accept multiple common environment variable names so local .env files
+    // with slightly different keys (for example, `MONGODb_URI`) still work.
+    const candidates = [
+        process.env.MONGODB_URI,
+        process.env.MONGODb_URI,
+        process.env.MONGO_URI,
+        process.env.MONGO_URL,
+    ];
+    const uri = candidates.find((v) => typeof v === "string" && v.length > 0) as string | undefined;
     if (!uri) {
         throw new Error(
-            "MONGODB_URI is not set. Create a .env.local file with MONGODB_URI or set the environment variable. See .env.local.example."
+            "MONGODB_URI is not set (tried MONGODB_URI, MONGODb_URI, MONGO_URI, MONGO_URL). Create a .env.local with the connection string or set the environment variable."
         );
     }
     return uri;

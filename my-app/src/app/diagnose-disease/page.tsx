@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export default function DiagnoseDiseasePage() {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ prediction?: string | null; confidence?: string | null; note?: string | null; error?: string | null } | null>(null);
+    const [result, setResult] = useState<{ prediction?: string | null; confidence?: string | null; note?: string | null; snippet?: string | null; error?: string | null } | null>(null);
 
     const filtered = useMemo(() => {
         const q = query.toLowerCase();
