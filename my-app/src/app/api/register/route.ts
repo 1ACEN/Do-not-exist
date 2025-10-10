@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        // Prevent registration of doctors through the public endpoint.
+        if (role === "doctor") {
+            return NextResponse.json({ error: "Doctor registration is disabled" }, { status: 403 });
+        }
+
         const db = await getDb();
         const users = db.collection("users");
 

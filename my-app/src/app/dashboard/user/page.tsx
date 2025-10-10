@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,66 @@ type DoctorNote = {
   type: "general" | "follow-up" | "urgent";
 };
 
+type AnalyticsData = {
+  period: number;
+  totalEntries: number;
+  averages: {
+    sleep: number;
+    heartRate: number;
+    steps: number;
+    water: number;
+    mood: number;
+    stress: number;
+    systolic: number;
+    diastolic: number;
+  };
+  trends: {
+    sleep: string;
+    heartRate: string;
+    steps: string;
+    water: string;
+    mood: string;
+    stress: string;
+  };
+  insights: Array<{
+    type: 'warning' | 'info' | 'success';
+    category: string;
+    message: string;
+    recommendation: string;
+  }>;
+  charts: {
+    daily: Array<{
+      date: string;
+      sleep: number;
+      heartRate: number;
+      steps: number;
+      water: number;
+      mood: number;
+      stress: number;
+      systolic: number;
+      diastolic: number;
+    }>;
+    weekly: Array<{
+      week: string;
+      sleep: number;
+      heartRate: number;
+      steps: number;
+      water: number;
+      mood: number;
+      stress: number;
+    }>;
+    monthly: Array<{
+      month: string;
+      sleep: number;
+      heartRate: number;
+      steps: number;
+      water: number;
+      mood: number;
+      stress: number;
+    }>;
+  };
+};
+
 const initialData: DailyLog[] = Array.from({ length: 14 }).map((_, i) => {
   const d = new Date();
   d.setDate(d.getDate() - (13 - i));
@@ -117,12 +177,52 @@ const initialData: DailyLog[] = Array.from({ length: 14 }).map((_, i) => {
   } as DailyLog;
 });
 
-const healthGoals: HealthGoal[] = [
-  { id: "steps", title: "Daily Steps", target: 10000, current: 7500, unit: "steps", color: "#10b981" },
-  { id: "water", title: "Water Intake", target: 8, current: 6, unit: "glasses", color: "#3b82f6" },
-  { id: "sleep", title: "Sleep Hours", target: 8, current: 7, unit: "hours", color: "#8b5cf6" },
-  { id: "exercise", title: "Exercise", target: 30, current: 20, unit: "minutes", color: "#f59e0b" },
-];
+// Health goals will be calculated from analytics data
+const getHealthGoals = (analytics: AnalyticsData | null): HealthGoal[] => {
+  if (!analytics) {
+    return [
+      { id: "steps", title: "Daily Steps", target: 10000, current: 7500, unit: "steps", color: "#10b981" },
+      { id: "water", title: "Water Intake", target: 8, current: 6, unit: "glasses", color: "#3b82f6" },
+      { id: "sleep", title: "Sleep Hours", target: 8, current: 7, unit: "hours", color: "#8b5cf6" },
+      { id: "exercise", title: "Exercise", target: 30, current: 20, unit: "minutes", color: "#f59e0b" },
+    ];
+  }
+
+  return [
+    { 
+      id: "steps", 
+      title: "Daily Steps", 
+      target: 10000, 
+      current: Math.round(analytics.averages.steps), 
+      unit: "steps", 
+      color: "#10b981" 
+    },
+    { 
+      id: "water", 
+      title: "Water Intake", 
+      target: 8, 
+      current: Math.round(analytics.averages.water), 
+      unit: "glasses", 
+      color: "#3b82f6" 
+    },
+    { 
+      id: "sleep", 
+      title: "Sleep Hours", 
+      target: 8, 
+      current: Math.round(analytics.averages.sleep * 10) / 10, 
+      unit: "hours", 
+      color: "#8b5cf6" 
+    },
+    { 
+      id: "mood", 
+      title: "Mood Score", 
+      target: 8, 
+      current: Math.round(analytics.averages.mood * 10) / 10, 
+      unit: "rating", 
+      color: "#f59e0b" 
+    },
+  ];
+};
 
 // Mock doctor data - set to null to simulate no doctor assigned
 // Uncomment the lines below to see how it looks with a doctor assigned
@@ -170,12 +270,28 @@ const mockDoctorNotes: DoctorNote[] = [
 ];
 
 export default function UserDashboard() {
-  const [logs, setLogs] = useState<DailyLog[]>(initialData);
+  const [logs, setLogs] = useState<DailyLog[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const latest = logs[logs.length - 1];
+  
+  // Use analytics data for latest values, fallback to mock data
+  const latest: DailyLog = analytics?.charts.daily[analytics.charts.daily.length - 1] || {
+    sleep: 7,
+    heartRate: 72,
+    systolic: 120,
+    diastolic: 80,
+    steps: 5000,
+    water: 8,
+    mood: 5,
+    stress: 3,
+    weight: 70,
+    temperature: 98,
+    date: "", // Add missing 'date' property to match DailyLog type
+  };
 
   const [form, setForm] = useState({
     sleep: latest.sleep,
@@ -197,6 +313,31 @@ export default function UserDashboard() {
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(mockDoctorInfo);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(mockPrescriptions);
   const [doctorNotes, setDoctorNotes] = useState<DoctorNote[]>(mockDoctorNotes);
+
+  // Fetch analytics data
+  const fetchAnalytics = useCallback(async (period = 30) => {
+    try {
+      const res = await fetch(`/api/analytics?period=${period}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data.analytics);
+        
+        // Update logs with daily chart data
+        if (data.analytics.charts.daily.length > 0) {
+          setLogs(data.analytics.charts.daily);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch analytics:", error);
+    }
+  }, []);
+
+  // Refresh data function
+  const refreshData = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAnalytics();
+    setRefreshing(false);
+  }, [fetchAnalytics]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -227,6 +368,9 @@ export default function UserDashboard() {
             console.error("Failed to fetch doctor info:", doctorError);
             // Keep using mock data if API fails
           }
+
+          // Fetch analytics data
+          await fetchAnalytics();
         } else {
           // No user logged in, redirect to login
           router.push("/login");
@@ -280,31 +424,39 @@ export default function UserDashboard() {
   async function onSubmit() {
     setSubmitting(true);
     try {
-      const res = await fetchPrediction({
-        heartRate: form.heartRate,
-        bloodPressureSys: form.systolic,
-        bloodPressureDia: form.diastolic,
-        sleep: form.sleep,
-        stress: form.stress,
+      // Save vitals data to database
+      const vitalsRes = await fetch("/api/vitals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: new Date().toISOString().slice(0, 10),
+          sleep: form.sleep,
+          heartRate: form.heartRate,
+          systolic: form.systolic,
+          diastolic: form.diastolic,
+          steps: form.steps,
+          water: form.water,
+          mood: form.mood,
+          stress: form.stress,
+          notes: form.notes
+        }),
       });
-      setPrediction({ label: res.predictedDisease, accuracy: res.accuracy, risk: res.riskScore });
-      
-      const today = new Date();
-      const next: DailyLog = {
-        date: today.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        sleep: form.sleep,
-        heartRate: form.heartRate,
-        systolic: form.systolic,
-        diastolic: form.diastolic,
-        steps: form.steps,
-        water: form.water,
-        mood: form.mood,
-        stress: form.stress,
-        weight: form.weight,
-        temperature: form.temperature,
-      };
-      setLogs((prev) => [...prev.slice(-13), next]);
-      setStreak((s) => s + 1);
+
+      if (vitalsRes.ok) {
+        // Get AI prediction
+        const res = await fetchPrediction({
+          heartRate: form.heartRate,
+          bloodPressureSys: form.systolic,
+          bloodPressureDia: form.diastolic,
+          sleep: form.sleep,
+          stress: form.stress,
+        });
+        setPrediction({ label: res.predictedDisease, accuracy: res.accuracy, risk: res.riskScore });
+        
+        // Refresh analytics data to get updated charts
+        await fetchAnalytics();
+        setStreak((s) => s + 1);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -337,49 +489,59 @@ export default function UserDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6">
       {/* Welcome Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
             Welcome back, {user?.name || "User"}!
           </h1>
-          <p className="text-slate-600 mt-1">
+          <p className="text-slate-600 mt-2">
             Track your health journey and stay on top of your wellness goals.
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right">
+          <div className="text-right bg-white rounded-lg p-4 shadow-sm">
             <div className="text-sm text-slate-600">Current Streak</div>
             <div className="text-2xl font-bold text-emerald-600">{streak} days</div>
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshData}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-white shadow-sm"
+          >
+            <TrendingUp className="h-4 w-4" />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </Button>
           <Calendar className="h-8 w-8 text-slate-400" />
         </div>
       </div>
 
       {/* Health Goals Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {healthGoals.map((goal) => (
-          <Card key={goal.id} className="relative overflow-hidden">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {getHealthGoals(analytics).map((goal) => (
+          <Card key={goal.id} className="relative overflow-hidden rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600">{goal.title}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-2">{goal.title}</p>
                   <p className="text-2xl font-bold text-slate-900">
                     {goal.current} / {goal.target}
                   </p>
-                  <p className="text-xs text-slate-500">{goal.unit}</p>
+                  <p className="text-xs text-slate-500 mt-1">{goal.unit}</p>
                 </div>
-                <div className="h-12 w-12 rounded-full flex items-center justify-center" style={{ backgroundColor: `${goal.color}20` }}>
+                <div className="h-12 w-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: `${goal.color}20` }}>
                   <Target className="h-6 w-6" style={{ color: goal.color }} />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-6">
                 <Progress 
                   value={(goal.current / goal.target) * 100} 
-                  className="h-2"
+                  className="h-3 rounded-full"
                 />
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-2 font-medium">
                   {Math.round((goal.current / goal.target) * 100)}% complete
                 </p>
               </div>
@@ -388,160 +550,49 @@ export default function UserDashboard() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-8 lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Daily Log Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-emerald-600" />
-                Today's Health Log
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label>Sleep Duration (hrs)</Label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Timer className="h-4 w-4 text-sky-600" />
-                    <Input 
-                      type="number" 
-                      value={form.sleep} 
-                      onChange={(e) => setForm({ ...form, sleep: Number(e.target.value) })} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Heart Rate (bpm)</Label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Heart className="h-4 w-4 text-rose-600" />
-                    <Input 
-                      type="number" 
-                      value={form.heartRate} 
-                      onChange={(e) => setForm({ ...form, heartRate: Number(e.target.value) })} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Blood Pressure (sys/dia)</Label>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
-                    <Input 
-                      placeholder="Systolic" 
-                      type="number" 
-                      value={form.systolic} 
-                      onChange={(e) => setForm({ ...form, systolic: Number(e.target.value) })} 
-                    />
-                    <Input 
-                      placeholder="Diastolic" 
-                      type="number" 
-                      value={form.diastolic} 
-                      onChange={(e) => setForm({ ...form, diastolic: Number(e.target.value) })} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Step Count</Label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Footprints className="h-4 w-4 text-emerald-600" />
-                    <Input 
-                      type="number" 
-                      value={form.steps} 
-                      onChange={(e) => setForm({ ...form, steps: Number(e.target.value) })} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Water Intake (glasses)</Label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <Droplet className="h-4 w-4 text-sky-600" />
-                    <Input 
-                      type="number" 
-                      value={form.water} 
-                      onChange={(e) => setForm({ ...form, water: Number(e.target.value) })} 
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Weight (kg)</Label>
-                  <Input 
-                    type="number" 
-                    value={form.weight} 
-                    onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })} 
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>Mood & Stress</Label>
-                  <div className="mt-2 grid gap-4">
-                    <div className="flex items-center justify-between text-sm text-slate-600">
-                      <span className="flex items-center gap-2">
-                        <Smile className="h-4 w-4"/>
-                        Mood
-                      </span>
-                      <span>{form.mood}/10</span>
-                    </div>
-                    <Slider 
-                      max={10} 
-                      value={[form.mood]} 
-                      onValueChange={(v) => setForm({ ...form, mood: v[0] ?? 5 })} 
-                    />
-                    <div className="flex items-center justify-between text-sm text-slate-600">
-                      <span className="flex items-center gap-2">
-                        <Activity className="h-4 w-4"/>
-                        Stress
-                      </span>
-                      <span>{form.stress}/10</span>
-                    </div>
-                    <Slider 
-                      max={10} 
-                      value={[form.stress]} 
-                      onValueChange={(v) => setForm({ ...form, stress: v[0] ?? 5 })} 
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 flex items-center gap-3">
-                <Button onClick={onSubmit} disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit Log"}
-                </Button>
-                <div className="text-sm text-slate-600">
-                  Streak: <span className="font-semibold">{streak} days</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="lg:col-span-2 space-y-8">
 
           {/* Charts Section */}
-          <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="vitals">Vitals</TabsTrigger>
-              <TabsTrigger value="trends">Trends</TabsTrigger>
-            </TabsList>
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <Tabs defaultValue="overview">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 rounded-lg p-1">
+                <TabsTrigger value="overview" className="rounded-md">Overview</TabsTrigger>
+                <TabsTrigger value="vitals" className="rounded-md">Vitals</TabsTrigger>
+                <TabsTrigger value="trends" className="rounded-md">Trends</TabsTrigger>
+              </TabsList>
             
-            <TabsContent value="overview" className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Weekly Activity</CardTitle>
+            <TabsContent value="overview" className="grid gap-6 md:grid-cols-2 mt-6">
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Weekly Activity</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 300 }}>
+                <CardContent style={{ height: 300 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weeklyStats}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="steps" fill="#10b981" />
+                    <BarChart data={analytics?.charts.weekly || weeklyStats}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }} 
+                      />
+                      <Bar dataKey="steps" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Daily Distribution</CardTitle>
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Daily Distribution</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 300 }}>
+                <CardContent style={{ height: 300 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -557,198 +608,206 @@ export default function UserDashboard() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }} 
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="vitals" className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Heart Rate (14 days)</CardTitle>
+            <TabsContent value="vitals" className="grid gap-6 md:grid-cols-2 mt-6">
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Heart Rate Trend</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 260 }}>
+                <CardContent style={{ height: 260 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={logs}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="heartRate" stroke="#b91c1c" strokeWidth={2} dot={false} />
+                    <LineChart data={analytics?.charts.daily || logs}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }} 
+                      />
+                      <Line type="monotone" dataKey="heartRate" stroke="#b91c1c" strokeWidth={3} dot={{ fill: '#b91c1c', strokeWidth: 2, r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sleep Hours</CardTitle>
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Sleep Hours Trend</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 260 }}>
+                <CardContent style={{ height: 260 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={logs}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="sleep" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                    <LineChart data={analytics?.charts.daily || logs}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }} 
+                      />
+                      <Line type="monotone" dataKey="sleep" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="trends" className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Wellness Radar</CardTitle>
+            <TabsContent value="trends" className="grid gap-6 md:grid-cols-2 mt-6">
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Wellness Radar</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 260 }}>
+                <CardContent style={{ height: 260 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={moodRadar}>
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="metric" />
-                      <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                      <Radar dataKey="value" stroke="#b91c1c" fill="#b91c1c" fillOpacity={0.5} />
+                      <PolarGrid stroke="#f1f5f9" />
+                      <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fontSize: 12 }} />
+                      <Radar dataKey="value" stroke="#b91c1c" fill="#b91c1c" fillOpacity={0.3} strokeWidth={2} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Steps Trend</CardTitle>
+              <Card className="rounded-xl shadow-md border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Steps Trend</CardTitle>
                 </CardHeader>
-                <CardContent style={{ height: 260 }}>
+                <CardContent style={{ height: 260 }} className="pt-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={logs}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="steps" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <LineChart data={analytics?.charts.daily || logs}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }} 
+                      />
+                      <Line type="monotone" dataKey="steps" stroke="#10b981" strokeWidth={3} dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
+            </Tabs>
+          </div>
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
-          {/* AI Prediction */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-purple-600" />
-                AI Health Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm text-slate-600">Predicted Risk</div>
-                <div className="text-lg font-semibold">
-                  {prediction?.label ?? "No prediction yet"}
-                </div>
-                <div className="text-sm text-slate-600 mt-4">Confidence</div>
-                <Progress value={prediction?.accuracy ?? 0} />
-                <div className="text-right text-sm text-slate-500">
-                  {prediction?.accuracy ? `${prediction.accuracy}%` : "Submit data to analyze"}
-                </div>
-                <div className="mt-4 rounded-md bg-blue-50 p-3 text-sm text-slate-700 border border-blue-100">
-                  {prediction ? (
-                    <span>
-                      Recommendation: Maintain consistent sleep patterns and consider stress management techniques.
-                    </span>
-                  ) : (
-                    <span>Submit your daily log to receive personalized health insights.</span>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-8">
 
-          {/* Alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          Health Insights
+          {/* <Card className="rounded-xl shadow-lg border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
-                Health Alerts
+                Health Insights
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="font-medium">Sleep Alert</span>
+            <CardContent className="pt-0">
+              <div className="space-y-4">
+                {analytics?.insights.length > 0 ? (
+                  analytics.insights.map((insight, index) => (
+                    <div 
+                      key={index}
+                      className={`rounded-lg border p-4 text-sm shadow-sm ${
+                        insight.type === 'warning' 
+                          ? 'border-amber-200 bg-amber-50 text-amber-800'
+                          : insight.type === 'success'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : 'border-blue-200 bg-blue-50 text-blue-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        {insight.type === 'warning' ? (
+                          <AlertTriangle className="h-4 w-4" />
+                        ) : insight.type === 'success' ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <TrendingUp className="h-4 w-4" />
+                        )}
+                        <span className="font-medium">{insight.category}</span>
+                      </div>
+                      <p className="mb-2">{insight.message}</p>
+                      <p className="text-xs italic opacity-80">{insight.recommendation}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-600" />
+                    <p className="text-sm font-medium">No alerts at this time</p>
+                    <p className="text-xs mt-1">Keep logging your health data for personalized insights</p>
                   </div>
-                  <p className="mt-1">Your sleep duration has been below 7 hours for 3 consecutive days.</p>
-                </div>
-                
-                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="font-medium">Great Progress!</span>
-                  </div>
-                  <p className="mt-1">You've maintained your step goal for 5 days straight.</p>
-                </div>
-                
-                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="font-medium">Improvement</span>
-                  </div>
-                  <p className="mt-1">Your stress levels have decreased by 20% this week.</p>
-                </div>
+                )}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Doctor Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="rounded-xl shadow-lg border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                 <Stethoscope className="h-5 w-5 text-blue-600" />
                 Doctor
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {doctorInfo ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {/* Doctor Info */}
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
                       <Stethoscope className="h-4 w-4 text-blue-600" />
                       <span className="font-medium text-blue-900">{doctorInfo.name}</span>
                     </div>
-                    <p className="text-sm text-blue-700">{doctorInfo.specialization}</p>
-                    <p className="text-xs text-blue-600 mt-1">Assigned: {new Date(doctorInfo.assignedDate).toLocaleDateString()}</p>
+                    <p className="text-sm text-blue-700 mb-2">{doctorInfo.specialization}</p>
+                    <p className="text-xs text-blue-600 mb-1">Assigned: {new Date(doctorInfo.assignedDate).toLocaleDateString()}</p>
                     <p className="text-xs text-blue-600">Contact: {doctorInfo.contact}</p>
                   </div>
 
                   {/* Prescriptions */}
                   {prescriptions.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
                         <Pill className="h-4 w-4 text-green-600" />
                         Current Prescriptions
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {prescriptions.map((prescription) => (
-                          <div key={prescription.id} className="p-2 bg-green-50 border border-green-200 rounded text-sm">
-                            <div className="font-medium text-green-900">{prescription.medication}</div>
-                            <div className="text-green-700">
+                          <div key={prescription.id} className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm shadow-sm">
+                            <div className="font-medium text-green-900 mb-1">{prescription.medication}</div>
+                            <div className="text-green-700 mb-2">
                               {prescription.dosage} - {prescription.frequency} for {prescription.duration}
                             </div>
-                            <div className="text-xs text-green-600 mt-1">
+                            <div className="text-xs text-green-600 mb-1">
                               Prescribed: {new Date(prescription.prescribedDate).toLocaleDateString()}
                             </div>
                             {prescription.notes && (
-                              <div className="text-xs text-green-600 mt-1 italic">{prescription.notes}</div>
+                              <div className="text-xs text-green-600 italic">{prescription.notes}</div>
                             )}
                           </div>
                         ))}
@@ -759,14 +818,14 @@ export default function UserDashboard() {
                   {/* Doctor Notes */}
                   {doctorNotes.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-medium text-slate-900 mb-2 flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
                         <MessageSquare className="h-4 w-4 text-purple-600" />
                         Doctor Notes
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {doctorNotes.map((note) => (
-                          <div key={note.id} className="p-2 bg-purple-50 border border-purple-200 rounded text-sm">
-                            <div className="flex items-center justify-between mb-1">
+                          <div key={note.id} className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
                               <span className="text-xs text-purple-600">{new Date(note.date).toLocaleDateString()}</span>
                               <span className={`text-xs px-2 py-1 rounded ${
                                 note.type === "urgent" ? "bg-red-100 text-red-700" :
@@ -784,9 +843,9 @@ export default function UserDashboard() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-4">
-                  <UserX className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                  <p className="text-slate-600 text-sm">No doctor assigned</p>
+                <div className="text-center py-8 bg-slate-50 rounded-lg">
+                  <UserX className="h-12 w-12 mx-auto mb-3 text-slate-400" />
+                  <p className="text-slate-600 text-sm font-medium">No doctor assigned</p>
                   <p className="text-xs text-slate-500 mt-1">Contact support to get assigned to a doctor</p>
                 </div>
               )}
@@ -794,28 +853,41 @@ export default function UserDashboard() {
           </Card>
 
           {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
+          <Card className="rounded-xl shadow-lg border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Quick Stats</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Avg Heart Rate</span>
-                  <span className="font-semibold">{Math.round(logs.reduce((acc, log) => acc + log.heartRate, 0) / logs.length)} bpm</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Avg Sleep</span>
-                  <span className="font-semibold">{Math.round(logs.reduce((acc, log) => acc + log.sleep, 0) / logs.length)} hrs</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Avg Steps</span>
-                  <span className="font-semibold">{Math.round(logs.reduce((acc, log) => acc + log.steps, 0) / logs.length).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Avg Mood</span>
-                  <span className="font-semibold">{Math.round(logs.reduce((acc, log) => acc + log.mood, 0) / logs.length)}/10</span>
-                </div>
+                {analytics ? (
+                  <>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Avg Heart Rate</span>
+                      <span className="font-semibold text-slate-900">{Math.round(analytics.averages.heartRate)} bpm</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Avg Sleep</span>
+                      <span className="font-semibold text-slate-900">{Math.round(analytics.averages.sleep * 10) / 10} hrs</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Avg Steps</span>
+                      <span className="font-semibold text-slate-900">{Math.round(analytics.averages.steps).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Avg Mood</span>
+                      <span className="font-semibold text-slate-900">{Math.round(analytics.averages.mood * 10) / 10}/5</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Total Entries</span>
+                      <span className="font-semibold text-slate-900">{analytics.totalEntries}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-lg">
+                    <p className="text-sm font-medium">No data available</p>
+                    <p className="text-xs mt-1">Start logging your health data</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -181,6 +181,28 @@ export default function DoctorDashboard() {
       }
     };
     fetchUser();
+    // fetch patients after user loads
+    const fetchPatients = async () => {
+      try {
+        const res = await fetch("/api/patients");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.items || []).map((it: any) => ({
+            ...it,
+            id: it._id ? String(it._1?._id ?? it._id) : it.id ?? String(it._id ?? ""),
+            // normalize common fields
+            riskLevel: it.riskLevel ?? "low",
+            alerts: it.alerts ?? [],
+            vitals: it.vitals ?? { heartRate: 0, bloodPressure: { systolic: 0, diastolic: 0 }, temperature: 98.6, weight: 0 },
+            lastVisit: it.lastVisit ?? new Date().toISOString(),
+          } as Patient));
+          setPatients(items);
+        }
+      } catch (e) {
+        console.error("Failed to load patients", e);
+      }
+    };
+    // keeping mockPatients for now; backend patients were removed per request
   }, [router]);
 
   // Show loading state
@@ -375,7 +397,7 @@ export default function DoctorDashboard() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRiskColor(patient.riskLevel)}`}>
                             {patient.riskLevel.toUpperCase()}
                           </span>
-                          {patient.alerts.length > 0 && (
+                          {patient.alerts && patient.alerts.length > 0 && (
                             <span className="text-xs text-red-600 font-medium">
                               {patient.alerts.length} alert{patient.alerts.length > 1 ? 's' : ''}
                             </span>

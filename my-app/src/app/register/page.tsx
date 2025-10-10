@@ -11,7 +11,7 @@ import { HeartPulse, Activity, Stethoscope } from "lucide-react";
 
 export default function RegisterPage() {
     const params = useSearchParams();
-    const [role, setRole] = useState<"client" | "doctor">("client");
+    const [role, setRole] = useState<"client">("client");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -19,9 +19,9 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    // Always register clients. Doctor registration is disabled.
     useEffect(() => {
-        const r = params.get("role");
-        if (r === "client" || r === "doctor") setRole(r);
+        setRole("client");
     }, [params]);
 
     async function onSubmit(e: React.FormEvent) {
@@ -38,20 +38,7 @@ export default function RegisterPage() {
     return (
         <div className="mx-auto max-w-5xl">
             <div className="mb-4 inline-flex rounded-lg border border-slate-300 bg-white p-1">
-                <button
-                    className={`px-4 py-1.5 text-sm rounded-md ${role === "client" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}
-                    onClick={() => setRole("client")}
-                    type="button"
-                >
-                    Client
-                </button>
-                <button
-                    className={`px-4 py-1.5 text-sm rounded-md ${role === "doctor" ? "bg-sky-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}
-                    onClick={() => setRole("doctor")}
-                    type="button"
-                >
-                    Doctor
-                </button>
+                <span className="px-4 py-1.5 text-sm rounded-md bg-sky-600 text-white">Client</span>
             </div>
 
             <Card className="overflow-hidden border-slate-300">
@@ -68,18 +55,7 @@ export default function RegisterPage() {
                             >
                                 <FormPanel roleLabel="Client" />
                             </motion.div>
-                        ) : (
-                            <motion.div
-                                key="doctor-info-left"
-                                initial={{ x: -16, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: -16, opacity: 0 }}
-                                transition={{ duration: 0.35 }}
-                                className="order-1 hidden md:block"
-                            >
-                                <InfoPanel type="doctor" />
-                            </motion.div>
-                        )}
+                        ) : null}
                     </AnimatePresence>
 
                     <AnimatePresence mode="wait" initial={false}>
@@ -94,18 +70,7 @@ export default function RegisterPage() {
                             >
                                 <InfoPanel type="client" />
                             </motion.div>
-                        ) : (
-                            <motion.div
-                                key="doctor-form-right"
-                                initial={{ x: 16, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={{ x: 16, opacity: 0 }}
-                                transition={{ duration: 0.35 }}
-                                className="order-2"
-                            >
-                                <FormPanel roleLabel="Doctor" />
-                            </motion.div>
-                        )}
+                        ) : null}
                     </AnimatePresence>
                 </div>
             </Card>
@@ -151,7 +116,7 @@ function InfoPanel({ type }: { type: "client" | "doctor" }) {
     );
 }
 
-function FormPanel({ roleLabel }: { roleLabel: "Client" | "Doctor" }) {
+function FormPanel({ roleLabel }: { roleLabel: "Client" }) {
     const router = useRouter();
     const [name, setName] = useState("");
     const [age, setAge] = useState<number | "">("");
@@ -167,31 +132,23 @@ function FormPanel({ roleLabel }: { roleLabel: "Client" | "Doctor" }) {
         setLoading(true);
         try {
             const payload: any = {
-                role: roleLabel === "Client" ? "client" : "doctor",
+                role: "client",
                 name,
                 age: age === "" ? undefined : age,
                 email,
+                height: height === "" ? undefined : height,
+                weight: weight === "" ? undefined : weight,
+                password,
             };
-            if (roleLabel === "Client") {
-                payload.height = height === "" ? undefined : height;
-                payload.weight = weight === "" ? undefined : weight;
-                payload.password = password;
-            } else {
-                payload.doctorId = (document.getElementById(`doctorId-${roleLabel}`) as HTMLInputElement | null)?.value || "";
-            }
             const res = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error("Register failed");
-            if (roleLabel === "Client") {
-                router.replace("/");
-            } else {
-                router.replace("/analyst");
-            }
+            router.replace("/");
         } finally {
             setLoading(false);
         }
     }
 
-    const isDoctor = roleLabel === "Doctor";
+    const isDoctor = false;
 
     return (
         <div>
@@ -229,17 +186,10 @@ function FormPanel({ roleLabel }: { roleLabel: "Client" | "Doctor" }) {
                         <Label htmlFor={`email-${roleLabel}`}>Email</Label>
                         <Input id={`email-${roleLabel}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
-                    {isDoctor ? (
-                        <div className="grid gap-2">
-                            <Label htmlFor={`doctorId-${roleLabel}`}>Doctor ID</Label>
-                            <Input id={`doctorId-${roleLabel}`} value={doctorId} onChange={(e) => setDoctorId(e.target.value)} required />
-                        </div>
-                    ) : (
-                        <div className="grid gap-2">
-                            <Label htmlFor={`password-${roleLabel}`}>Password</Label>
-                            <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                        </div>
-                    )}
+                    <div className="grid gap-2">
+                        <Label htmlFor={`password-${roleLabel}`}>Password</Label>
+                        <Input id={`password-${roleLabel}`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                    </div>
                     <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create account"}</Button>
                     <p className="text-xs text-slate-500">You are registering as <span className="font-medium">{roleLabel}</span>.</p>
                 </form>
