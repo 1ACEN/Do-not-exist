@@ -91,9 +91,6 @@ export default function DiagnoseDiseasePage() {
                             {result.confidence && (
                                 <div className="mt-2 text-slate-600">Confidence: <span className="font-medium">{result.confidence}</span></div>
                             )}
-                            {result.note && (
-                                <div className="mt-2 text-amber-600 text-xs italic">{result.note}</div>
-                            )}
                         </div>
                     )}
                 </CardContent>

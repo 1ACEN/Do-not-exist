@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AnalyticsCharts from "@/components/analytics-charts";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
@@ -93,78 +93,112 @@ export default function PatientChartsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{patientInfo?.name ?? 'Patient Charts'}</h1>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{patientInfo?.name ?? 'Patient'}</h1>
           {patientInfo && (
-            <p className="text-slate-600">{patientInfo.age ?? ''} years • {patientInfo.email ?? ''}</p>
+            <p className="text-sm text-slate-100 mt-1">{patientInfo.age ?? ''} years • {patientInfo.email ?? ''}</p>
           )}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">Active</span>
+            <span className="text-xs text-slate-100">Last sync: {patientInfo?.lastSeen ? new Date(patientInfo.lastSeen).toLocaleString() : '—'}</span>
+          </div>
         </div>
-        <div>
+
+        <div className="flex items-center gap-2">
           <Button variant={"ghost" as any} onClick={() => router.back()}>Back</Button>
+          <Button onClick={() => window.print()}>Export PDF</Button>
         </div>
       </div>
 
       {loading ? (
         <Card>
-          <CardContent>Loading...</CardContent>
+          <CardContent>Loading patient details...</CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Patient details */}
-          <div>
-            <Card className="bg-white rounded-lg shadow-sm border">
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+          {/* Left column: Patient summary + conditions + prescriptions (30%) */}
+          <div className="lg:col-span-3 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Patient</CardTitle>
+              </CardHeader>
               <CardContent>
-                <h3 className="text-lg font-semibold">Patient</h3>
-                <p className="text-sm text-slate-600 mt-2">{patientInfo?.name}</p>
-                <p className="text-sm text-slate-600">{patientInfo?.email}</p>
-                {patientInfo?.age && <p className="text-sm text-slate-600">{patientInfo.age} years</p>}
-                <div className="mt-4">
-                  <Button variant={"ghost" as any} onClick={() => router.back()}>Back</Button>
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">{patientInfo?.name}</p>
+                  <p className="text-sm text-slate-600">{patientInfo?.email}</p>
+                  {patientInfo?.age && <p className="text-sm text-slate-600">{patientInfo.age} years</p>}
+                  {/* Vitals summary removed per request */}
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Charts - span 2 cols on large screens */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <AnalyticsCharts userId={id} />
-            </div>
-          </div>
-
-          {/* Prescriptions panel */}
-          <div>
-            <Card className="bg-white rounded-lg shadow-sm border">
+            <Card>
+              <CardHeader>
+                <CardTitle>Conditions</CardTitle>
+              </CardHeader>
               <CardContent>
-                <h3 className="text-lg font-semibold">Prescriptions</h3>
+                <div className="space-y-2">
+                  {(patientInfo?.conditions || []).length === 0 ? (
+                    <p className="text-sm text-slate-500">No known conditions</p>
+                  ) : (
+                    (patientInfo.conditions || []).map((c: string) => (
+                      <div key={c} className="text-sm text-slate-700">• {c}</div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Prescriptions moved here */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Prescriptions</CardTitle>
+              </CardHeader>
+              <CardContent>
                 {presLoading ? (
-                  <p className="text-sm text-slate-500 mt-2">Loading prescriptions...</p>
+                  <p className="text-sm text-slate-500">Loading prescriptions...</p>
                 ) : prescriptions.length === 0 ? (
-                  <p className="text-sm text-slate-500 mt-2">No prescriptions found for this patient.</p>
+                  <div className="text-sm text-slate-500">No prescriptions found for this patient.</div>
                 ) : (
-                  <div className="space-y-3 mt-3">
+                  <div className="space-y-3">
                     {prescriptions.map(p => (
-                      <div key={p.id} className="p-3 rounded-md border">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-medium">{p.medication}</div>
-                            <div className="text-sm text-slate-600">{p.dosage ?? ''} {p.frequency ? `· ${p.frequency}` : ''}</div>
-                            {p.duration && <div className="text-sm text-slate-600">Duration: {p.duration}</div>}
-                            {p.prescribedDate && <div className="text-sm text-slate-500">{new Date(p.prescribedDate).toLocaleDateString()}</div>}
-                            {p.notes && <div className="text-sm text-slate-500 mt-1">{p.notes}</div>}
+                      <div key={p.id} className="p-3 rounded-md border flex items-start justify-between bg-white">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium text-slate-900">{p.medication}</div>
+                            <div className={`text-xs font-medium px-2 py-0.5 rounded ${p.isCompleted ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>{p.isCompleted ? 'Completed' : 'Active'}</div>
                           </div>
-                          <div className="ml-4 flex flex-col items-end">
-                            <label className="inline-flex items-center">
-                              <input type="checkbox" checked={!!p.isCompleted} onChange={() => toggleComplete(p)} className="mr-2" />
-                              <span className="text-sm">Done</span>
-                            </label>
-                          </div>
+                          <div className="text-sm text-slate-600 mt-1">{p.dosage ?? ''} {p.frequency ? `· ${p.frequency}` : ''}</div>
+                          {p.duration && <div className="text-sm text-slate-600">Duration: {p.duration}</div>}
+                          {p.prescribedDate && <div className="text-sm text-slate-500 mt-1">{new Date(p.prescribedDate).toLocaleDateString()}</div>}
+                          {p.notes && <div className="text-sm text-slate-500 mt-1">{p.notes}</div>}
+                        </div>
+                        <div className="ml-4 flex flex-col items-end gap-2">
+                          <label className="inline-flex items-center">
+                            <input type="checkbox" checked={!!p.isCompleted} onChange={() => toggleComplete(p)} className="mr-2" />
+                            <span className="text-sm">Done</span>
+                          </label>
+                          <Button variant={"ghost" as any} onClick={() => { navigator.clipboard?.writeText(p.notes || ''); }}>
+                            Copy Notes
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right column: Charts (70%) */}
+          <div className="lg:col-span-7">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Vitals Trends</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <AnalyticsCharts userId={id} />
               </CardContent>
             </Card>
           </div>
