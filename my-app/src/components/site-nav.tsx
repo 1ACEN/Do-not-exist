@@ -16,8 +16,6 @@ export function SiteNav() {
         const items = [
             { href: "/dashboard/doctor", label: "Dashboard" },
             { href: "/analyst", label: "Analyst" },
-            { href: "/admin", label: "Analytics" },
-            { href: "/doctors", label: "Doctors" },
         ];
         return (
             <nav className="hidden md:flex items-center gap-4">
@@ -49,6 +47,7 @@ export function SiteNav() {
         { href: "/diagnose-disease", label: "Diagnosis" },
         { href: "/vitals", label: "Vitals" },
         { href: "/doctors", label: "Doctors" },
+        { href:'/analytics', label:"Analytics"}
     ];
 
     return (

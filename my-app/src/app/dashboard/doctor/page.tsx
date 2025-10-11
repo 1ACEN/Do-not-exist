@@ -21,7 +21,7 @@ import {
   Calendar,
   Clock,
   Stethoscope,
-  BarChart3,
+  
   PieChart,
   LineChart,
   Eye,
@@ -32,25 +32,7 @@ import {
   Loader2
 } from "lucide-react";
 import Modal from '@/components/ui/modal';
-import { 
-  ResponsiveContainer, 
-  LineChart as RechartsLineChart, 
-  Line, 
-  CartesianGrid, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  BarChart, 
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar
-} from "recharts";
+// Recharts removed from this file to simplify the dashboard
 
 type Patient = {
   id: string;
@@ -132,20 +114,7 @@ const mockPatients: Patient[] = [
   }
 ];
 
-const mockPatientLogs: PatientLog[] = Array.from({ length: 30 }).map((_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() - (29 - i));
-  return {
-    date: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-    heartRate: Math.round(70 + Math.random() * 30),
-    systolic: Math.round(110 + Math.random() * 40),
-    diastolic: Math.round(70 + Math.random() * 20),
-    temperature: Math.round((98 + Math.random() * 2) * 10) / 10,
-    mood: Math.round(5 + Math.random() * 5),
-    stress: Math.round(2 + Math.random() * 6),
-    sleep: Math.round(6 + Math.random() * 3),
-  };
-});
+// Removed mock patient logs and PatientLog type (not used)
 
 export default function DoctorDashboard() {
   const [patients, setPatients] = useState<Patient[]>(mockPatients);
@@ -153,11 +122,17 @@ export default function DoctorDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState<any>(null);
   const pathname = usePathname();
-  const [patientLogs, setPatientLogs] = useState<PatientLog[]>(mockPatientLogs);
+  // patientLogs state removed
   const [patientPrescriptions, setPatientPrescriptions] = useState<Array<{ id: string; medication: string; dosage?: string; frequency?: string; duration?: string; prescribedDate: string; notes?: string; isCompleted?: boolean; isActive?: boolean; }>>([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [patientsFetchError, setPatientsFetchError] = useState<string | null>(null);
   const router = useRouter();
+  // Quick prescribe state (used by the quick-prescribe card)
+  const [quickPrescribeOpen, setQuickPrescribeOpen] = useState(false);
+  const [quickPatientId, setQuickPatientId] = useState<string>("");
+  const [quickMedication, setQuickMedication] = useState<string>("");
+  const [quickNotes, setQuickNotes] = useState<string>("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -190,13 +165,18 @@ export default function DoctorDashboard() {
     const tick = async () => {
       try {
         const res = await fetch('/api/doctor/patients');
-        if (!res.ok) return;
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          if (mounted) setPatientsFetchError(`Failed to load patients: ${res.status} ${res.statusText} ${text}`);
+          return;
+        }
         const data = await res.json();
         if (!mounted) return;
         const items = (data.items || []).map((p: any) => ({ id: p.id, name: p.name, age: p.age || 0, gender: p.gender || 'Unknown', lastVisit: p.assignedDate || new Date().toISOString(), riskLevel: 'low', alerts: [], vitals: { heartRate: 0, bloodPressure: { systolic: 0, diastolic: 0 }, temperature: 98.6, weight: 0 }, conditions: [], medications: [] } as Patient));
         setPatients(items);
+        setPatientsFetchError(items.length === 0 ? 'No patients assigned to this doctor.' : null);
       } catch (e) {
-        // ignore
+        if (mounted) setPatientsFetchError(String(e));
       }
     };
     tick();
@@ -316,15 +296,7 @@ export default function DoctorDashboard() {
 
   const totalAlerts = patients.reduce((acc, patient) => acc + patient.alerts.length, 0);
 
-  const weeklyTrends = [
-    { day: "Mon", patients: 12, alerts: 3 },
-    { day: "Tue", patients: 15, alerts: 5 },
-    { day: "Wed", patients: 18, alerts: 2 },
-    { day: "Thu", patients: 14, alerts: 4 },
-    { day: "Fri", patients: 16, alerts: 6 },
-    { day: "Sat", patients: 8, alerts: 1 },
-    { day: "Sun", patients: 5, alerts: 0 },
-  ];
+    // weeklyTrends removed (Weekly Activity card removed)
 
   const riskDistribution = [
     { name: "High Risk", value: riskStats.high, color: "#ef4444" },
@@ -353,15 +325,15 @@ export default function DoctorDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+  <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-sky-50 via-white to-rose-50 p-6 rounded-lg shadow-sm">
+  <div className="flex items-center justify-between p-6 rounded-xl shadow-lg bg-gradient-to-r from-white to-sky-50 border border-slate-100">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Doctor Dashboard
           </h1>
           <p className="text-slate-600 mt-1 max-w-xl">
-            Welcome back, Dr. {user?.name || "User"}. Monitor your patients and track their health progress with quick actions and insights.
+            Welcome back, <span className="font-medium">Dr. {user?.name || "User"}</span>. Monitor your patients and track their health progress with quick actions and insights.
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -369,74 +341,70 @@ export default function DoctorDashboard() {
             <div className="text-sm text-slate-500">Total Patients</div>
             <div className="text-2xl font-bold text-blue-600">{patients.length}</div>
           </div>
-          <div className="bg-white rounded-full p-2 shadow">
-            <Stethoscope className="h-7 w-7 text-slate-500" />
+          <div className="bg-white rounded-full p-2 shadow-md border">
+            <Stethoscope className="h-7 w-7 text-slate-600" />
           </div>
         </div>
       </div>
 
       {/* Doctor dashboard sub-navigation */}
-      <nav aria-label="Doctor dashboard navigation" className="flex items-center gap-3">
+      {/* <nav aria-label="Doctor dashboard navigation" className="flex items-center gap-3">
         <Link href="/dashboard/doctor" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/dashboard/doctor') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'}`}>
           Dashboard
         </Link>
-        <Link href={selectedPatient ? `/dashboard/doctor/patient/${selectedPatient.id}` : '#'} className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/dashboard/doctor/patient') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'} ${!selectedPatient ? 'opacity-50 pointer-events-none' : ''}`}>
-          Patient Details
-        </Link>
-        <Link href="/admin" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${pathname?.startsWith('/admin') ? 'bg-[var(--accent)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--accent-bg)] hover:text-[var(--accent)]'}`}>
-          Analytics
-        </Link>
-      </nav>
+        {/* Patient Details (removed) */}
+        {/* Analytics link removed as requested */}
+      {/* </nav> */} 
 
       {/* Overview Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
-          <CardContent className="p-6 bg-gradient-to-b from-white to-sky-50">
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="shadow-sm border rounded-xl overflow-hidden">
+          <CardContent className="p-6 bg-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Total Patients</p>
+                <p className="text-sm font-medium text-slate-500">Total Patients</p>
                 <p className="text-2xl font-bold text-slate-900">{patients.length}</p>
+                <p className="text-xs text-slate-400 mt-1">Active in your roster</p>
               </div>
-              <div className="bg-blue-50 p-2 rounded-md">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg shadow-inner">
                 <Users className="h-7 w-7 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
-          <CardContent className="p-6 bg-gradient-to-b from-white to-rose-50">
+        <Card className="shadow-sm border rounded-xl overflow-hidden">
+          <CardContent className="p-6 bg-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Active Alerts</p>
+                <p className="text-sm font-medium text-slate-500">Active Alerts</p>
                 <p className="text-2xl font-bold text-red-600">{totalAlerts}</p>
+                <p className="text-xs text-slate-400 mt-1">Requires attention</p>
               </div>
-              <div className="bg-red-50 p-2 rounded-md">
+              <div className="bg-red-50 p-3 rounded-lg shadow-inner">
                 <AlertTriangle className="h-7 w-7 text-red-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-md border-0 rounded-lg overflow-hidden">
-          <CardContent className="p-6 bg-gradient-to-b from-white to-emerald-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Overview</p>
-                <p className="text-2xl font-bold text-slate-900">Quick Insights</p>
-                <p className="text-xs text-slate-500 mt-1">Risk: {riskStats.high} high • {riskStats.medium} medium • {riskStats.low} low</p>
-              </div>
-              <div className="bg-emerald-50 p-2 rounded-md">
-                <BarChart3 className="h-7 w-7 text-emerald-600" />
-              </div>
+        <Card className="shadow-sm border rounded-xl overflow-hidden">
+          <CardContent className="p-6 bg-white flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">Overview</p>
+              <p className="text-2xl font-bold text-slate-900">Quick Insights</p>
+              <p className="text-xs text-slate-400 mt-1">Key metrics and actions are available in the Quick Actions panel below.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Actions moved to Quick Actions panel to avoid duplication */}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Patient List */}
-        <div className="space-y-6">
+  <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left: Patient List */}
+        <div className="lg:col-span-4 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -444,8 +412,8 @@ export default function DoctorDashboard() {
                 Patient List
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+            <CardContent className="space-y-3 p-4 bg-white rounded-lg shadow-sm border">
+              <div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
@@ -455,17 +423,17 @@ export default function DoctorDashboard() {
                     className="pl-10"
                   />
                 </div>
-                
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+
+                <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 mt-3">
                   {filteredPatients.map((patient) => (
                     <div 
                       key={patient.id} 
                       className={`p-3 rounded-lg border cursor-pointer transition-all transform ${
                         selectedPatient?.id === patient.id 
-                          ? "border-blue-500 bg-blue-50 shadow-md -translate-y-0.5" 
-                          : "border-slate-200 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5"
+                          ? "border-blue-500 bg-gradient-to-r from-white to-blue-50 shadow-md -translate-y-0.5" 
+                          : "border-slate-100 hover:border-slate-200 hover:shadow-sm hover:-translate-y-0.5"
                       }`}
-                      onClick={() => setSelectedPatient(patient)}
+                      onClick={() => { setSelectedPatient(patient); router.push(`/dashboard/doctor/patient/${patient.id}`); }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -490,349 +458,48 @@ export default function DoctorDashboard() {
                       </div>
                     </div>
                   ))}
+                  {patientsFetchError && (
+                    <div className="p-3 mt-3 rounded-md border border-red-200 bg-red-50 text-red-800 text-sm">
+                      {patientsFetchError}
+                    </div>
+                  )}
+                  {!patientsFetchError && filteredPatients.length === 0 && (
+                    <div className="p-6 text-center text-sm text-slate-600">
+                      No patients found. Ensure you are logged in as a doctor and that patients have been assigned to your account.
+                    </div>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Risk Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Risk Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={riskDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {riskDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Patient Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {selectedPatient ? (
-            <>
-              {/* Patient Header */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl">{selectedPatient.name}</CardTitle>
-                      <p className="text-slate-600">
-                        {selectedPatient.age} years • {selectedPatient.gender} • 
-                        Last visit: {new Date(selectedPatient.lastVisit).toLocaleDateString()}
-                      </p>
-                    </div>
-                      <div className="flex items-center gap-2">
-                      <button className="inline-flex items-center gap-2 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" onClick={() => { openPrescriptionFor(selectedPatient!.id); }}>
-                        <MessageSquare className="h-4 w-4" />
-                        Send Prescription
-                      </button>
-                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => { openNotice(); }}>
-                        <FileText className="h-4 w-4" />
-                        Send Notice
-                      </button>
-                      <button className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50" onClick={() => router.push(`/dashboard/doctor/patient/${selectedPatient.id}`)}>
-                        <BarChart3 className="h-4 w-4" />
-                        View Charts
-                      </button>
-                      <Button size="sm" variant={"ghost" as any} onClick={exportReport}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Export Report
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-
-              {/* Patient Tabs */}
-              <Tabs defaultValue="overview">
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="vitals">Vitals</TabsTrigger>
-                  <TabsTrigger value="trends">Trends</TabsTrigger>
-                  <TabsTrigger value="medical">Medical Info</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    {/* Current Vitals */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Current Vitals</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">Heart Rate</span>
-                            <span className="font-semibold">{selectedPatient.vitals.heartRate} bpm</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">Blood Pressure</span>
-                            <span className="font-semibold">
-                              {selectedPatient.vitals.bloodPressure.systolic}/{selectedPatient.vitals.bloodPressure.diastolic}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">Temperature</span>
-                            <span className="font-semibold">{selectedPatient.vitals.temperature}°F</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">Weight</span>
-                            <span className="font-semibold">{selectedPatient.vitals.weight} kg</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Alerts */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-600" />
-                          Active Alerts
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {selectedPatient.alerts.length > 0 ? (
-                          <div className="space-y-2">
-                            {selectedPatient.alerts.map((alert, index) => (
-                              <div key={index} className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-                                {alert}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-slate-500">
-                            <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                            <p>No active alerts</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Prescriptions for this patient */}
-                  {patientPrescriptions.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Prescriptions</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {patientPrescriptions.map(p => (
-                            <div key={p.id} className={`p-3 rounded-lg border ${p.isCompleted ? 'bg-gray-100 border-gray-200 text-gray-600 line-through' : 'bg-green-50 border-green-200 text-green-900'}`}>
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <div className="font-medium">{p.medication}</div>
-                                  <div className="text-sm">{p.dosage} • {p.frequency} • {p.duration}</div>
-                                  {p.notes && <div className="text-xs italic">{p.notes}</div>}
-                                </div>
-                                <div>
-                                  <label className="inline-flex items-center gap-2 text-sm">
-                                    <input type="checkbox" checked={Boolean(p.isCompleted)} onChange={async (e) => {
-                                      const checked = e.target.checked;
-                                      setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: checked } : x));
-                                      try {
-                                        const res = await fetch('/api/prescriptions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, isCompleted: checked }) });
-                                        if (!res.ok) {
-                                          setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: !checked } : x));
-                                          alert('Failed to update prescription');
-                                        }
-                                      } catch (err) {
-                                        setPatientPrescriptions(prev => prev.map(x => x.id === p.id ? { ...x, isCompleted: !checked } : x));
-                                        console.error(err);
-                                        alert('Failed to update prescription');
-                                      }
-                                    }} />
-                                    <span className="text-xs">Completed</span>
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Weekly Activity */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Weekly Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div style={{ height: 300 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={weeklyTrends}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="day" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="patients" fill="#3b82f6" />
-                            <Bar dataKey="alerts" fill="#ef4444" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="vitals" className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Heart Rate Trend</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div style={{ height: 250 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RechartsLineChart data={patientLogs}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="date" />
-                              <YAxis />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="heartRate" stroke="#ef4444" strokeWidth={2} />
-                            </RechartsLineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Blood Pressure Trend</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div style={{ height: 250 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RechartsLineChart data={patientLogs}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="date" />
-                              <YAxis />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="systolic" stroke="#ef4444" strokeWidth={2} />
-                              <Line type="monotone" dataKey="diastolic" stroke="#3b82f6" strokeWidth={2} />
-                            </RechartsLineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="trends" className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Sleep Pattern</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div style={{ height: 250 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RechartsLineChart data={patientLogs}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="date" />
-                              <YAxis />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="sleep" stroke="#8b5cf6" strokeWidth={2} />
-                            </RechartsLineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Mood & Stress</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div style={{ height: 250 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RechartsLineChart data={patientLogs}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="date" />
-                              <YAxis />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="mood" stroke="#10b981" strokeWidth={2} />
-                              <Line type="monotone" dataKey="stress" stroke="#f59e0b" strokeWidth={2} />
-                            </RechartsLineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="medical" className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Medical Conditions</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {selectedPatient.conditions.length > 0 ? (
-                          <div className="space-y-2">
-                            {selectedPatient.conditions.map((condition, index) => (
-                              <div key={index} className="p-2 bg-slate-50 border border-slate-200 rounded text-sm">
-                                {condition}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-slate-500">No conditions recorded</p>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Current Medications</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {selectedPatient.medications.length > 0 ? (
-                          <div className="space-y-2">
-                            {selectedPatient.medications.map((medication, index) => (
-                              <div key={index} className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                                {medication}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-slate-500">No medications recorded</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          ) : (
+        {/* Right: Actions and Insights */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="grid gap-6 md:grid-cols-1">
             <Card>
-              <CardContent className="p-12 text-center">
-                <Eye className="h-12 w-12 mx-auto mb-4 text-slate-400" />
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Select a Patient</h3>
-                <p className="text-slate-600">Choose a patient from the list to view their detailed health information and trends.</p>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm text-slate-600">Prescribe or notify patients quickly.</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button onClick={() => setQuickPrescribeOpen(true)}>Quick Prescribe</Button>
+                      <Button variant={"ghost" as any} onClick={() => setNoticeOpen(true)}>Send Notice</Button>
+                      <Button variant={"outline" as any} onClick={exportReport}>Export</Button>
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex items-center">
+                    {/* reserved for a small illustration or sparkline if needed */}
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
+          </div>
+
+          {/* Weekly Activity removed to declutter the dashboard */}
         </div>
       </div>
       {/* Prescription Modal */}
@@ -864,6 +531,39 @@ export default function DoctorDashboard() {
           <div>
             <Label>Notes</Label>
             <Input value={prescriptionForm.notes} onChange={(e) => setPrescriptionForm({ ...prescriptionForm, notes: e.target.value })} placeholder="Additional notes (optional)" />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Quick Prescribe Modal (triggered from Overview card) */}
+      <Modal open={quickPrescribeOpen} onClose={() => setQuickPrescribeOpen(false)} title={"Quick Prescribe"} footer={(
+        <div className="flex justify-end gap-2">
+          <button className="px-3 py-1.5 rounded border" onClick={() => setQuickPrescribeOpen(false)}>Cancel</button>
+          <button className="px-3 py-1.5 rounded bg-blue-600 text-white" onClick={async () => {
+            if (!quickPatientId || !quickMedication) { alert('Please select a patient and enter medication'); return; }
+            await sendPrescription(quickPatientId, { medication: quickMedication, notes: quickNotes });
+            setQuickPrescribeOpen(false);
+            setQuickPatientId(''); setQuickMedication(''); setQuickNotes('');
+          }}>Send</button>
+        </div>
+      )}>
+        <div className="space-y-3">
+          <div>
+            <Label>Patient</Label>
+            <select className="w-full border rounded px-2 py-1" value={quickPatientId} onChange={(e) => setQuickPatientId(e.target.value)}>
+              <option value="">Select patient</option>
+              {patients.map(p => (
+                <option key={p.id} value={p.id}>{p.name} {p.age ? `· ${p.age}y` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Medication</Label>
+            <Input value={quickMedication} onChange={(e) => setQuickMedication(e.target.value)} placeholder="Medication name e.g. Amoxicillin" />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Input value={quickNotes} onChange={(e) => setQuickNotes(e.target.value)} placeholder="Optional notes" />
           </div>
         </div>
       </Modal>
