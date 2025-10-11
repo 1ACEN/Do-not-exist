@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AnalyticsCharts from "@/components/analytics-charts";
+import dynamic from "next/dynamic";
+const AnalyticsCharts = dynamic(() => import("@/components/analytics-charts"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 

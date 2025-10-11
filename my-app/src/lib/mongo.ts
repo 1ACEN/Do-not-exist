@@ -39,7 +39,16 @@ export function getMongoClient(): Promise<MongoClient> {
     }
 
     client = new MongoClient(uri, opts);
-    clientPromise = client.connect().catch((err) => {
+    const start = Date.now();
+    clientPromise = client.connect().then((c) => {
+        const took = Date.now() - start;
+        if (took > 1000) {
+            console.warn(`MongoDB initial connect took ${took}ms`);
+        } else {
+            console.debug(`MongoDB connected in ${took}ms`);
+        }
+        return c;
+    }).catch((err) => {
         console.error("Failed to connect to MongoDB:", err);
         // reset so future attempts can retry
         client = null;

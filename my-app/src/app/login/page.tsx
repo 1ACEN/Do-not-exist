@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
+const FramerWrapper = dynamic(() => import("@/components/FramerWrapper"), { ssr: false });
+// Access Motion and Presence by rendering the wrapper and using global refs below
 import { Activity, HeartPulse, Stethoscope } from "lucide-react";
 
 export default function LoginPage() {
@@ -76,75 +78,43 @@ export default function LoginPage() {
 
       <Card className="overflow-hidden border-slate-300">
         <div className="grid md:grid-cols-2 min-h-[460px]">
-          <AnimatePresence mode="wait" initial={false}>
-            {role === "client" ? (
-              <motion.div
-                key="client-form-left"
-                initial={{ x: -16, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -16, opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="order-1"
-              >
-                <LoginForm
-                  roleLabel="Client"
-                  role={role}
-                  onSubmit={onSubmit}
-                  email={email}
-                  setEmail={setEmail}
-                  password={password}
-                  setPassword={setPassword}
-                  loading={loading}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="doctor-info-left"
-                initial={{ x: -16, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -16, opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="order-1 hidden md:block"
-              >
-                <InfoPanel type="doctor" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {role === "client" ? (
+            <div className="order-1">
+              <LoginForm
+                roleLabel="Client"
+                role={role}
+                onSubmit={onSubmit}
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                loading={loading}
+              />
+            </div>
+          ) : (
+            <div className="order-1 hidden md:block">
+              <InfoPanel type="doctor" />
+            </div>
+          )}
 
-          <AnimatePresence mode="wait" initial={false}>
-            {role === "client" ? (
-              <motion.div
-                key="client-info-right"
-                initial={{ x: 16, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 16, opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="order-2 hidden md:block"
-              >
-                <InfoPanel type="client" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="doctor-form-right"
-                initial={{ x: 16, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 16, opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="order-2"
-              >
-                <LoginForm
-                  roleLabel="Doctor"
-                  role={role}
-                  onSubmit={onSubmit}
-                  email={email}
-                  setEmail={setEmail}
-                  password={password}
-                  setPassword={setPassword}
-                  loading={loading}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {role === "client" ? (
+            <div className="order-2 hidden md:block">
+              <InfoPanel type="client" />
+            </div>
+          ) : (
+            <div className="order-2">
+              <LoginForm
+                roleLabel="Doctor"
+                role={role}
+                onSubmit={onSubmit}
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                loading={loading}
+              />
+            </div>
+          )}
         </div>
       </Card>
     </div>
