@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongo";
 import { verifyJwt } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { detectAnomalies } from "@/lib/anomaly";
 
 function getUserIdFromReq(req: NextRequest): string | null {
     const token = req.cookies.get("token")?.value;
@@ -20,7 +21,14 @@ export async function GET(req: NextRequest) {
         .sort({ date: -1 })
         .limit(30)
         .toArray();
-    return NextResponse.json({ items });
+    // detect simple anomalies on the server and return alongside items
+    try {
+        const anomalies = detectAnomalies(items || []);
+        return NextResponse.json({ items, anomalies });
+    } catch (e) {
+        // if anomaly detection fails, still return items
+        return NextResponse.json({ items });
+    }
 }
 
 export async function POST(req: NextRequest) {

@@ -45,22 +45,29 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           </main>
         </Providers>
         <footer className="mt-16 border-t border-gray-200 bg-gray-100">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-8 md:grid-cols-3 text-sm">
-            <div>
-              <div className="font-semibold text-gray-900 gradient-text text-lg professional-heading">Healthcare Eclipse</div>
-              <p className="mt-3 text-gray-700 leading-relaxed professional-text">Detect silent diseases early with trustworthy AI insights and advanced health monitoring.</p>
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-12 md:grid-cols-3 md:grid-rows-3 text-sm">
+            {/* Title and description: occupy left column and span two rows */}
+            <div className="md:row-span-2">
+              <div className="font-semibold text-gray-900 gradient-text text-2xl md:text-3xl professional-heading">Healthcare Eclipse</div>
+              <p className="mt-3 text-gray-700 leading-relaxed professional-text text-lg">Detect silent diseases early with trustworthy AI insights and advanced health monitoring.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-gray-700">
-              <Link href="/client" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Client App</Link>
-              <Link href="/analyst" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Analyst</Link>
-              <Link href="/detective" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">AI Insights</Link>
-              <Link href="/admin" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Analytics</Link>
-              <Link href="/login" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Login</Link>
-              <Link href="/register" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Register</Link>
+
+            {/* Links: occupy columns 2-3 as a 2x3 grid (6 links) */}
+            <div className="md:col-span-2 md:row-span-2 flex items-center md:justify-end">
+              <div className="grid grid-cols-2 grid-rows-3 gap-6 text-gray-700">
+                <Link href="/dashboard" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Dashboard</Link>
+                <Link href="/diagnosis" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Diagnosis</Link>
+                <Link href="/vitals" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Vitals</Link>
+                <Link href="/admin" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Analytics</Link>
+                <Link href="/about" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">About Us</Link>
+                <Link href="/contact" className="hover:text-[var(--accent)] transition-colors duration-200 professional-text">Contact Us</Link>
+              </div>
             </div>
-            <div className="md:text-right text-gray-700">
-              <div className="font-medium text-gray-900 mb-2 professional-heading">© 2025 Healthcare Eclipse</div>
-              <div className="professional-text">All rights reserved</div>
+
+            {/* Bottom row: copyright centered across all columns */}
+            <div className="md:col-span-3 text-center">
+              <div className="font-medium text-gray-900">© 2025 Healthcare Eclipse</div>
+              <div className="text-xs text-gray-700">All rights reserved</div>
             </div>
           </div>
         </footer>

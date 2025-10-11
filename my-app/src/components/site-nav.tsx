@@ -9,8 +9,16 @@ export function SiteNav() {
     const { user, loading } = useAuth();
     const pathname = usePathname() ?? "/";
 
-    // Don't show navigation until we know the user state
-    if (loading || !user) return null;
+    // During auth loading, render a lightweight placeholder nav to avoid layout shift
+    if (loading || !user) {
+        return (
+            <nav className="hidden md:flex items-center gap-4 opacity-80 select-none">
+                <span className="h-6 w-20 rounded bg-slate-200/60" />
+                <span className="h-6 w-16 rounded bg-slate-200/60" />
+                <span className="h-6 w-12 rounded bg-slate-200/60" />
+            </nav>
+        );
+    }
 
     if (user.role === "doctor") {
         const items = [

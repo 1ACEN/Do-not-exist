@@ -46,7 +46,11 @@ export function useAuth() {
     };
 
     window.addEventListener("storage", onStorage);
-    
+
+    // Also listen for a custom same-tab event so callers can trigger a refresh
+    const onAuthRefreshEvent = () => fetchUser();
+    window.addEventListener("auth-refresh", onAuthRefreshEvent as EventListener);
+
     // Expose manual refresh function
     // @ts-ignore
     window.__authRefresh = fetchUser;
@@ -54,6 +58,7 @@ export function useAuth() {
     return () => {
       mounted = false;
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("auth-refresh", onAuthRefreshEvent as EventListener);
     };
   }, []);
 

@@ -30,35 +30,17 @@ export default function LoginPage() {
       try {
         // @ts-ignore
         window.__authRefresh?.();
+        // cross-tab signal
         localStorage.setItem("auth-refresh", String(Date.now()));
+        // same-tab signal for immediate updates
+        try { window.dispatchEvent(new Event('auth-refresh')); } catch {}
       } catch {}
       // Redirect users to their dashboard pages.
       if (role === "doctor") {
         router.replace("/dashboard/doctor");
       } else {
-        try {
-          // check if user has vitals for today
-          const r = await fetch("/api/vitals");
-          if (r.ok) {
-            const data = await r.json();
-            const items = data.items || [];
-            const today = new Date().toISOString().slice(0, 10);
-            const hasToday = items.some((it: any) => {
-              try {
-                const d = new Date(it.date);
-                return d.toISOString().slice(0, 10) === today;
-              } catch {
-                return false;
-              }
-            });
-            if (hasToday) router.replace("/dashboard/user");
-            else router.replace("/daily-vitals");
-          } else {
-            router.replace("/dashboard/user");
-          }
-        } catch (e) {
-          router.replace("/dashboard/user");
-        }
+        // route client users to their dashboard immediately — avoid extra network calls here
+        router.replace("/dashboard/user");
       }
     } finally {
       setLoading(false);
@@ -303,12 +285,39 @@ function LoginForm({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Signing in..." : "Sign in"}
             </Button>
+
+            {/* Divider with 'or' */}
+            <div className="flex items-center gap-3 py-1">
+              <span className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs text-slate-400">or</span>
+              <span className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            {/* Improved Google sign-in button */}
             <a href={googleHref} className="block">
-              <Button variant="outline" type="button">
-                Sign in with Google
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full flex items-center justify-center gap-3 border-red-600 text-red-700 hover:bg-red-50 focus:ring-2 focus:ring-red-200"
+                aria-label="Sign in with Google"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 48 48"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C34.7 32.8 30 36 24 36c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.2l6-6C34.6 2.9 29.6 1 24 1 11.9 1 2 10.9 2 23s9.9 22 22 22c11 0 21-7.8 21-22 0-1.5-.2-2.6-.4-3.5z"/>
+                  <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.1 17 18.6 14 24 14c3.3 0 6.3 1.2 8.6 3.2l6-6C34.6 2.9 29.6 1 24 1 16.5 1 9.9 5.8 6.3 14.7z"/>
+                  <path fill="#4CAF50" d="M24 47c5.4 0 10.4-1.9 14.2-5.2l-6.6-5.3C30.2 36.6 27.3 38 24 38c-6 0-10.7-3.2-13-7.9l-6.7 5.1C9 41.9 16.2 47 24 47z"/>
+                  <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.1-3.4 5.7-6.6 7.4l.1-.1 6.6 5.3C39.6 43.3 48 35 48 23 48 21.4 47.9 19.8 47.6 18.3 47.6 18.3 46.6 19.6 43.6 20.5z"/>
+                </svg>
+                <span className="text-sm font-medium">Sign in with Google</span>
               </Button>
             </a>
           </div>

@@ -45,6 +45,8 @@ type Vital = {
 
 export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?: string; initialRange?: number | "all" }) {
   const [data, setData] = useState<Vital[]>([]);
+  const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [showAlerts, setShowAlerts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rangeDays, setRangeDays] = useState<number | "all">(initialRange);
@@ -61,6 +63,9 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
           const d = it?.date ? new Date(it.date) : new Date();
           const date = d.toISOString().slice(0, 10);
           return {
+            // include rawId so we can match anomalies returned from server
+            // @ts-ignore
+            rawId: it._id ?? it.id ?? undefined,
             date,
             sleep: Number(it.sleep || 0),
             heartRate: Number(it.heartRate || 0),
@@ -73,6 +78,8 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
           } as Vital;
         });
         setData(mapped.reverse());
+        // capture anomalies if the API returned them
+        setAnomalies(json?.anomalies ?? []);
       })
       .catch((e) => {
         console.error(e);
@@ -118,6 +125,12 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
         backgroundColor: colorMap.sleep + "33",
         tension: 0.2,
         fill: true,
+        pointBackgroundColor: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "sleep" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? "#ef4444" : colorMap.sleep
+        ),
+        pointRadius: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "sleep" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? 6 : 3
+        ),
       },
     ],
   };
@@ -132,6 +145,12 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
         backgroundColor: colorMap.water + "33",
         tension: 0.2,
         fill: true,
+        pointBackgroundColor: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "water" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? "#ef4444" : colorMap.water
+        ),
+        pointRadius: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "water" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? 6 : 3
+        ),
       },
     ],
   };
@@ -142,7 +161,9 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
       {
         label: "Heart Rate",
         data: filtered.map((d) => d.heartRate),
-        backgroundColor: colorMap.heartRate,
+        backgroundColor: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "heartRate" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? "#ef4444" : colorMap.heartRate
+        ),
         borderColor: colorMap.heartRate,
         borderWidth: 1,
       },
@@ -155,10 +176,15 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
       {
         label: "Steps",
         data: filtered.map((d) => d.steps),
-        backgroundColor: "#10b981",
+        backgroundColor: filtered.map((d) =>
+          anomalies.some((a) => a.metric === "steps" && String(a.itemId) === String((d as any).rawId ?? d.date)) ? "#ef4444" : "#10b981"
+        ),
       },
     ],
   };
+
+  // Prepare a list of friendly alerts from anomalies
+  const alerts = anomalies.map((a: any) => ({ id: a.itemId, metric: a.metric, value: a.value, reason: a.reason }));
 
   const commonOptions = {
     responsive: true,
@@ -209,16 +235,63 @@ export default function AnalyticsCharts({ userId, initialRange = 7 }: { userId?:
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start md:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Vitals & Analytics</h1>
-        <div>
-          <label className="block text-sm text-slate-600">Range</label>
-          <select className="mt-1" value={String(rangeDays)} onChange={(e) => setRangeDays(e.target.value === "all" ? "all" : Number(e.target.value))}>
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value="all">All</option>
-          </select>
+        <div className="ml-auto flex items-center gap-3">
+          <div>
+            <label className="block text-sm text-slate-600">Range</label>
+            <select className="mt-1" value={String(rangeDays)} onChange={(e) => setRangeDays(e.target.value === "all" ? "all" : Number(e.target.value))}>
+              <option value={7}>Last 7 days</option>
+              <option value={14}>Last 14 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div className="relative">
+            <button
+              aria-label="Show deviation alerts"
+              className="relative inline-flex items-center rounded-md px-3 py-2 bg-white border border-slate-200 shadow-sm hover:bg-rose-50"
+              onClick={() => setShowAlerts((s) => !s)}
+            >
+              {/* bell icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h11z" />
+                <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M13.73 21a2 2 0 01-3.46 0" />
+              </svg>
+              {alerts.length > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-rose-600 rounded-full">{alerts.length}</span>
+              )}
+            </button>
+
+            {/* popover */}
+            {showAlerts && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-md shadow-lg z-30">
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">Deviation Alerts</div>
+                    <button className="text-xs text-slate-500" onClick={() => setShowAlerts(false)}>Close</button>
+                  </div>
+                  <div className="mt-2 max-h-64 overflow-auto">
+                    {alerts.length === 0 ? (
+                      <div className="text-sm text-slate-500">No alerts</div>
+                    ) : (
+                      <ul className="space-y-2">
+                        {alerts.map((a) => (
+                          <li key={`${a.id}-${a.metric}`} className="flex items-start gap-3">
+                            <div className="mt-0.5 h-3 w-3 rounded-full bg-rose-600" />
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">{a.metric}</div>
+                              <div className="text-xs text-slate-600">{String(a.value)} — {a.reason}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
